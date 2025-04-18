@@ -221,42 +221,38 @@ const CommentsPage: React.FC = () => {
               <React.Fragment key={comment.review_id}>
                 {index > 0 && <Divider component="li" />}
                 <ListItem alignItems="flex-start" sx={{ flexDirection: 'column' }}>
-                  <Grid container spacing={1}>
-                    <Grid item xs={12}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                        <Typography variant="subtitle2" color="primary">
-                          ID: {comment.review_id}
-                        </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Rating value={comment.star_rating} readOnly max={5} />
-                          <Chip 
-                            label={`${comment.star_rating}/5`} 
-                            size="small" 
-                            sx={{ ml: 1 }}
-                            color={comment.star_rating >= 4 ? 'success' : comment.star_rating <= 2 ? 'error' : 'warning'}
-                          />
-                        </Box>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                      <Typography variant="subtitle2" color="primary">
+                        ID: {comment.review_id}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Rating value={comment.star_rating} readOnly max={5} />
+                        <Chip 
+                          label={`${comment.star_rating}/5`} 
+                          size="small" 
+                          sx={{ ml: 1 }}
+                          color={comment.star_rating >= 4 ? 'success' : comment.star_rating <= 2 ? 'error' : 'warning'}
+                        />
                       </Box>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <ListItemText
-                        primary={
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              display: '-webkit-box',
-                              WebkitLineClamp: 3,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
-                            {comment.review_text}
-                          </Typography>
-                        }
-                      />
-                    </Grid>
-                  </Grid>
+                    </Box>
+                    <ListItemText
+                      primary={
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {comment.review_text}
+                        </Typography>
+                      }
+                    />
+                  </Box>
                 </ListItem>
               </React.Fragment>
             ))}

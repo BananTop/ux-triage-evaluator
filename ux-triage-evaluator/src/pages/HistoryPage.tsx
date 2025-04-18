@@ -138,9 +138,9 @@ const HistoryPage: React.FC = () => {
       </Paper>
 
       {/* Prompt History Cards */}
-      <Grid container spacing={3}>
+      <Box display="grid" gap={3}>
         {state.promptHistory.map((entry, index) => (
-          <Grid item xs={12} key={entry.id}>
+          <Box key={entry.id}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
@@ -214,9 +214,9 @@ const HistoryPage: React.FC = () => {
                 </Button>
               </CardActions>
             </Card>
-          </Grid>
+          </Box>
         ))}
-      </Grid>
+      </Box>
 
       <Box sx={{ mt: 4 }}>
         <Button variant="outlined" onClick={() => navigate('/')}>

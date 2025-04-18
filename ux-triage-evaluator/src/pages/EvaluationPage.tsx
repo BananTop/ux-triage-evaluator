@@ -285,9 +285,9 @@ const EvaluationPage: React.FC = () => {
         </Paper>
       </Box>
 
-      <Grid container spacing={3}>
+      <Box display="grid" gridTemplateColumns={{xs: '1fr', md: 'repeat(2, 1fr)'}} gap={3}>
         {/* Human Evaluation */}
-        <Grid item xs={12} md={6}>
+        <Box>
           <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
             <Typography variant="h6" gutterBottom>
               Your Evaluation
@@ -326,10 +326,10 @@ const EvaluationPage: React.FC = () => {
               ))}
             </Stack>
           </Paper>
-        </Grid>
+        </Box>
 
         {/* LLM Evaluation */}
-        <Grid item xs={12} md={6}>
+        <Box>
           <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
             <Typography variant="h6" gutterBottom>
               LLM Evaluation
@@ -365,8 +365,8 @@ const EvaluationPage: React.FC = () => {
               </Stack>
             )}
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
         <Button variant="outlined" onClick={() => navigate('/comments')}>

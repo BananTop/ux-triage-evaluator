@@ -17,7 +17,7 @@ import {
   Divider,
   Alert
 } from '@mui/material';
-import { Chart as ChartJS, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend, ScriptableContext, Scale, Tick } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
 import Layout from '../components/Layout';
 import { useAppContext } from '../contexts/AppContext';
@@ -47,7 +47,7 @@ const AnalysisPage: React.FC = () => {
   const [dimensionAverages, setDimensionAverages] = useState<Record<string, number>>({});
 
   // Reference for the chart canvas (for export)
-  const chartRef = useRef<ChartJS>(null);
+  const chartRef = useRef<ChartJS<'radar', number[], unknown>>(null);
 
   useEffect(() => {
     if (state.evaluations.length === 0) {
@@ -154,7 +154,9 @@ const AnalysisPage: React.FC = () => {
         max: 100,
         ticks: {
           stepSize: 20,
-          callback: (value: number) => `${value}%`,
+          callback: function(this: Scale<any>, tickValue: number | string, index: number, ticks: Tick[]) {
+            return `${Number(tickValue)}%`;
+          },
         },
         pointLabels: {
           font: {
@@ -169,7 +171,9 @@ const AnalysisPage: React.FC = () => {
       },
       tooltip: {
         callbacks: {
-          label: (context: any) => `${context.dataset.label}: ${context.raw.toFixed(1)}%`,
+          label: function(context: any) {
+            return `${context.dataset.label}: ${context.raw.toFixed(1)}%`;
+          },
         },
       },
     },
@@ -230,9 +234,9 @@ const AnalysisPage: React.FC = () => {
         Analysis Results
       </Typography>
 
-      <Grid container spacing={4}>
+      <Box display="grid" gridTemplateColumns={{xs: '1fr', md: 'repeat(3, 1fr)'}} gap={4}>
         {/* Overall Alignment Score */}
-        <Grid item xs={12} md={4}>
+        <Box>
           <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
             <Typography variant="h6" gutterBottom>
               Overall Alignment
@@ -279,10 +283,10 @@ const AnalysisPage: React.FC = () => {
                 : 'Poor alignment between LLM and human evaluations.'}
             </Typography>
           </Paper>
-        </Grid>
+        </Box>
 
         {/* Alignment Highlights */}
-        <Grid item xs={12} md={8}>
+        <Box sx={{ gridColumn: {md: 'span 2'} }}>
           <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
             <Typography variant="h6" gutterBottom>
               Alignment Highlights
@@ -328,10 +332,10 @@ const AnalysisPage: React.FC = () => {
               </Typography>
             </Box>
           </Paper>
-        </Grid>
+        </Box>
 
         {/* Alignment Radar Chart */}
-        <Grid item xs={12} md={6}>
+        <Box>
           <Paper elevation={3} sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Dimension Alignment
@@ -340,10 +344,10 @@ const AnalysisPage: React.FC = () => {
               <Radar ref={chartRef} data={chartData} options={chartOptions} />
             </Box>
           </Paper>
-        </Grid>
+        </Box>
 
         {/* Dimension Alignment Table */}
-        <Grid item xs={12} md={6}>
+        <Box>
           <Paper elevation={3} sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Dimension Details
@@ -377,10 +381,10 @@ const AnalysisPage: React.FC = () => {
               </Table>
             </TableContainer>
           </Paper>
-        </Grid>
+        </Box>
 
         {/* Misaligned Comments */}
-        <Grid item xs={12}>
+        <Box sx={{ gridColumn: '1 / -1' }}>
           <Paper elevation={3} sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Most Misaligned Comments
@@ -390,9 +394,9 @@ const AnalysisPage: React.FC = () => {
               Reviewing these could help improve the prompt.
             </Typography>
 
-            <Grid container spacing={3}>
+            <Box display="grid" gap={3}>
               {misalignedComments.map((comment) => (
-                <Grid item xs={12} key={comment.review_id}>
+                <Box key={comment.review_id}>
                   <Card variant="outlined">
                     <CardContent>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
@@ -447,14 +451,14 @@ const AnalysisPage: React.FC = () => {
                       </TableContainer>
                     </CardContent>
                   </Card>
-                </Grid>
+                </Box>
               ))}
-            </Grid>
+            </Box>
           </Paper>
-        </Grid>
+        </Box>
 
         {/* Action Buttons */}
-        <Grid item xs={12}>
+        <Box sx={{ gridColumn: '1 / -1' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
             <Button variant="outlined" onClick={() => navigate('/evaluation')}>
               Back to Evaluation
@@ -477,8 +481,8 @@ const AnalysisPage: React.FC = () => {
               </Button>
             </Box>
           </Box>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Layout>
   );
 };

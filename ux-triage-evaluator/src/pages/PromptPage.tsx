@@ -67,8 +67,8 @@ const PromptPage: React.FC = () => {
         <Typography variant="body2" paragraph>
           Your prompt should instruct the LLM on how to score app store comments on these UX dimensions:
         </Typography>
-        <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={12} sm={6} md={4}>
+        <Box display="grid" gridTemplateColumns={{xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)'}} gap={2} sx={{ mb: 2 }}>
+          <Box>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="h6">Attractiveness</Typography>
@@ -77,8 +77,8 @@ const PromptPage: React.FC = () => {
                 </Typography>
               </CardContent>
             </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={4}>
+          </Box>
+          <Box>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="h6">Efficiency</Typography>
@@ -87,8 +87,8 @@ const PromptPage: React.FC = () => {
                 </Typography>
               </CardContent>
             </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={4}>
+          </Box>
+          <Box>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="h6">Perspicuity</Typography>
@@ -97,8 +97,8 @@ const PromptPage: React.FC = () => {
                 </Typography>
               </CardContent>
             </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={4}>
+          </Box>
+          <Box>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="h6">Dependability</Typography>
@@ -107,8 +107,8 @@ const PromptPage: React.FC = () => {
                 </Typography>
               </CardContent>
             </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={4}>
+          </Box>
+          <Box>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="h6">Stimulation</Typography>
@@ -117,8 +117,8 @@ const PromptPage: React.FC = () => {
                 </Typography>
               </CardContent>
             </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={4}>
+          </Box>
+          <Box>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="h6">Novelty</Typography>
@@ -127,8 +127,8 @@ const PromptPage: React.FC = () => {
                 </Typography>
               </CardContent>
             </Card>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
         <Typography variant="body2" paragraph>
           Scoring System: Each dimension should be scored on a scale from -3 (very negative) to +3 (very positive), with 0 being neutral.
         </Typography>
@@ -173,9 +173,9 @@ const PromptPage: React.FC = () => {
           <Typography variant="h5" gutterBottom>
             Recent Prompts
           </Typography>
-          <Grid container spacing={2}>
+          <Box display="grid" gap={2}>
             {state.promptHistory.slice(0, 3).map((entry) => (
-              <Grid item xs={12} key={entry.id}>
+              <Box key={entry.id}>
                 <Card>
                   <CardContent>
                     <Typography variant="subtitle2" color="text.secondary">
@@ -210,9 +210,9 @@ const PromptPage: React.FC = () => {
                     </Button>
                   </CardActions>
                 </Card>
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
           {state.promptHistory.length > 3 && (
             <Box sx={{ textAlign: 'center', mt: 2 }}>
               <Button onClick={() => navigate('/history')}>

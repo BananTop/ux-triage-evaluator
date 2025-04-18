@@ -60,6 +60,18 @@ export interface PromptHistoryEntry {
   dimension_alignments: DimensionAlignment;
 }
 
+// LLM Model options
+export type LLMModel = 'gpt-4' | 'gpt-3.5-turbo' | 'claude-2' | 'llama-2' | 'custom';
+
+// LLM Settings
+export interface LLMSettings {
+  apiKey: string;
+  model: LLMModel;
+  customModelName?: string; // Used when model is 'custom'
+  temperature?: number;
+  maxTokens?: number;
+}
+
 // App state
 export interface AppState {
   currentPrompt: string;
@@ -68,4 +80,5 @@ export interface AppState {
   evaluations: CommentEvaluation[];
   selectedCommentIndex: number;
   hideLLMScores: boolean;
+  llmSettings: LLMSettings;
 }

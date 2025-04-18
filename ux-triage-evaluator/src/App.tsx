@@ -9,6 +9,7 @@ const CommentsPage = React.lazy(() => import('./pages/CommentsPage'));
 const EvaluationPage = React.lazy(() => import('./pages/EvaluationPage'));
 const AnalysisPage = React.lazy(() => import('./pages/AnalysisPage'));
 const HistoryPage = React.lazy(() => import('./pages/HistoryPage'));
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 
 // Create theme
 const theme = createTheme({
@@ -36,6 +37,7 @@ function App() {
               <Route path="/evaluation" element={<EvaluationPage />} />
               <Route path="/analysis" element={<AnalysisPage />} />
               <Route path="/history" element={<HistoryPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </React.Suspense>
         </Router>

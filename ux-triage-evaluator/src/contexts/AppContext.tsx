@@ -3,7 +3,9 @@ import {
   AppState, 
   CommentInput, 
   CommentEvaluation, 
-  PromptHistoryEntry 
+  PromptHistoryEntry,
+  LLMSettings,
+  LLMModel 
 } from '../models/types';
 
 // Default app state
@@ -14,6 +16,12 @@ const initialState: AppState = {
   evaluations: [],
   selectedCommentIndex: 0,
   hideLLMScores: false,
+  llmSettings: {
+    apiKey: '',
+    model: 'gpt-3.5-turbo',
+    temperature: 0.7,
+    maxTokens: 1000
+  }
 };
 
 // Create context
@@ -26,6 +34,7 @@ const AppContext = createContext<{
   setSelectedCommentIndex: (index: number) => void;
   toggleHideLLMScores: () => void;
   calculateAlignmentScores: () => void;
+  updateLLMSettings: (settings: Partial<LLMSettings>) => void;
 }>({
   state: initialState,
   setCurrentPrompt: () => {},
@@ -35,6 +44,7 @@ const AppContext = createContext<{
   setSelectedCommentIndex: () => {},
   toggleHideLLMScores: () => {},
   calculateAlignmentScores: () => {},
+  updateLLMSettings: () => {},
 });
 
 // Provider component
@@ -42,23 +52,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [state, setState] = useState<AppState>(initialState);
 
   // Update prompt
-  const setCurrentPrompt = (prompt: string) => {
+  const setCurrentPrompt = React.useCallback((prompt: string) => {
     setState((prevState) => ({
       ...prevState,
       currentPrompt: prompt,
     }));
-  };
+  }, []);
 
   // Add prompt to history
-  const addPromptToHistory = (entry: PromptHistoryEntry) => {
+  const addPromptToHistory = React.useCallback((entry: PromptHistoryEntry) => {
     setState((prevState) => ({
       ...prevState,
       promptHistory: [entry, ...prevState.promptHistory],
     }));
-  };
+  }, []);
 
   // Update comments
-  const setComments = (comments: CommentInput[]) => {
+  const setComments = React.useCallback((comments: CommentInput[]) => {
     setState((prevState) => ({
       ...prevState,
       comments,
@@ -100,66 +110,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
       })),
     }));
-  };
+  }, []);
 
   // Update evaluations
-  const setEvaluations = (evaluations: CommentEvaluation[]) => {
+  const setEvaluations = React.useCallback((evaluations: CommentEvaluation[]) => {
     setState((prevState) => ({
       ...prevState,
       evaluations,
     }));
-  };
+  }, []);
 
   // Change selected comment index
-  const setSelectedCommentIndex = (index: number) => {
+  const setSelectedCommentIndex = React.useCallback((index: number) => {
     setState((prevState) => ({
       ...prevState,
       selectedCommentIndex: index,
     }));
-  };
+  }, []);
 
   // Toggle hide LLM scores
-  const toggleHideLLMScores = () => {
+  const toggleHideLLMScores = React.useCallback(() => {
     setState((prevState) => ({
       ...prevState,
       hideLLMScores: !prevState.hideLLMScores,
     }));
-  };
+  }, []);
 
-  // Calculate alignment scores
-  const calculateAlignmentScores = () => {
-    const evaluations = [...state.evaluations];
-    
-    // Calculate alignment for each evaluation
-    const updatedEvaluations = evaluations.map(evaluation => {
+  // Calculate alignment scores for current evaluations
+  const calculateAlignmentScores = React.useCallback(() => {
+    if (state.evaluations.length === 0) return;
+
+    const updatedEvaluations = state.evaluations.map((evaluation) => {
+      // Calculate alignment for each dimension
       const dimensionAlignments = {
         attractiveness_alignment: calculateSingleAlignment(
-          evaluation.llm_scores.attractiveness, 
+          evaluation.llm_scores.attractiveness,
           evaluation.human_scores.attractiveness
         ),
         efficiency_alignment: calculateSingleAlignment(
-          evaluation.llm_scores.efficiency, 
+          evaluation.llm_scores.efficiency,
           evaluation.human_scores.efficiency
         ),
         perspicuity_alignment: calculateSingleAlignment(
-          evaluation.llm_scores.perspicuity, 
+          evaluation.llm_scores.perspicuity,
           evaluation.human_scores.perspicuity
         ),
         dependability_alignment: calculateSingleAlignment(
-          evaluation.llm_scores.dependability, 
+          evaluation.llm_scores.dependability,
           evaluation.human_scores.dependability
         ),
         stimulation_alignment: calculateSingleAlignment(
-          evaluation.llm_scores.stimulation, 
+          evaluation.llm_scores.stimulation,
           evaluation.human_scores.stimulation
         ),
         novelty_alignment: calculateSingleAlignment(
-          evaluation.llm_scores.novelty, 
+          evaluation.llm_scores.novelty,
           evaluation.human_scores.novelty
-        )
+        ),
       };
 
-      // Calculate overall alignment (average of all dimensions)
+      // Calculate overall alignment score (average of all dimensions)
       const overallAlignmentScore = (
         dimensionAlignments.attractiveness_alignment +
         dimensionAlignments.efficiency_alignment +
@@ -172,15 +182,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return {
         ...evaluation,
         dimension_alignments: dimensionAlignments,
-        overall_alignment_score: overallAlignmentScore
+        overall_alignment_score: overallAlignmentScore,
       };
     });
 
-    setState(prevState => ({
+    setState((prevState) => ({
       ...prevState,
-      evaluations: updatedEvaluations
+      evaluations: updatedEvaluations,
     }));
-  };
+  }, [state.evaluations]);
 
   // Helper function to calculate alignment between two scores
   // Returns value between 0 (no alignment) and 1 (perfect alignment)
@@ -190,6 +200,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Convert to alignment score (0-1 range)
     return 1 - (difference / 6);
   };
+
+  // Update LLM settings
+  const updateLLMSettings = React.useCallback((settings: Partial<LLMSettings>) => {
+    setState((prevState) => ({
+      ...prevState,
+      llmSettings: {
+        ...prevState.llmSettings,
+        ...settings
+      }
+    }));
+
+    // Save settings to localStorage for persistence
+    const updatedSettings = {
+      ...state.llmSettings,
+      ...settings
+    };
+    localStorage.setItem('llmSettings', JSON.stringify(updatedSettings));
+  }, [state.llmSettings]);
+
+  // Load LLM settings from localStorage on component mount
+  React.useEffect(() => {
+    const savedSettings = localStorage.getItem('llmSettings');
+    if (savedSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedSettings);
+        updateLLMSettings(parsedSettings);
+      } catch (error) {
+        console.error('Failed to parse saved LLM settings:', error);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <AppContext.Provider
@@ -202,6 +244,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedCommentIndex,
         toggleHideLLMScores,
         calculateAlignmentScores,
+        updateLLMSettings,
       }}
     >
       {children}

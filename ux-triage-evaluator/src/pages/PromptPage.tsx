@@ -18,6 +18,11 @@ import { useNavigate } from 'react-router-dom';
 const PromptPage: React.FC = () => {
   const { state, setCurrentPrompt } = useAppContext();
   const [localPrompt, setLocalPrompt] = useState(state.currentPrompt);
+
+  // Sync localPrompt with state.currentPrompt when navigating to this page
+  React.useEffect(() => {
+    setLocalPrompt(state.currentPrompt);
+  }, [state.currentPrompt]);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 

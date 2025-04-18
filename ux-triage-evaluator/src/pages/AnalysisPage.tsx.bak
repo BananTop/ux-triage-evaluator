@@ -391,19 +391,6 @@ const AnalysisPage: React.FC = () => {
               Most Misaligned Comments
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              These comments had the largest differences between LLM and human evaluations.
-              Reviewing these could help improve the prompt.
-            </Typography>
-            
-            <Box display="grid" gap={3}>
-              {misalignedComments.map((comment) => (
-                <Box key={`${comment.name}-${comment.date}`}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                        <Typography variant="subtitle1">
-                          Name: {comment.name}
-                        </Typography>
                         <Chip
                           label={`${Math.round(comment.overall_alignment_score * 100)}% aligned`}
                           color={getAlignmentColor(comment.overall_alignment_score)}

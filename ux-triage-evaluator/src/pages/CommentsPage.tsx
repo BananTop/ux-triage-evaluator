@@ -45,14 +45,15 @@ const CommentsPage: React.FC = () => {
         const validComments = commentsArray.filter((comment): comment is CommentInput => {
           return (
             comment &&
-            typeof comment.review_id === 'string' && 
-            typeof comment.review_text === 'string' &&
-            typeof comment.star_rating === 'number'
+            typeof comment.name === 'string' && 
+            typeof comment.date === 'string' &&
+            typeof comment.text === 'string' &&
+            typeof comment.stars === 'number'
           );
         });
 
         if (validComments.length === 0) {
-          setError('No valid comments found in the file. Each comment needs a review_id, review_text, and star_rating.');
+          setError('No valid comments found in the file. Each comment needs a name, date, text, and stars.');
           return;
         }
 

@@ -6,9 +6,10 @@ export type Score = -3 | -2 | -1 | 0 | 1 | 2 | 3;
 
 // Original input comment format
 export interface CommentInput {
-  review_id: string;
-  review_text: string;
-  star_rating: number;
+  name: string;
+  date: string;
+  text: string;
+  stars: number;
 }
 
 // Scores for all dimensions

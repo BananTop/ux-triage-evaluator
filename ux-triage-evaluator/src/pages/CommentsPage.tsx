@@ -85,14 +85,15 @@ const CommentsPage: React.FC = () => {
       const validComments = commentsArray.filter((comment): comment is CommentInput => {
         return (
           comment &&
-          typeof comment.review_id === 'string' && 
-          typeof comment.review_text === 'string' &&
-          typeof comment.star_rating === 'number'
+          typeof comment.name === 'string' && 
+          typeof comment.date === 'string' &&
+          typeof comment.text === 'string' &&
+          typeof comment.stars === 'number'
         );
       });
 
       if (validComments.length === 0) {
-        setError('No valid comments found in the input. Each comment needs a review_id, review_text, and star_rating.');
+        setError('No valid comments found in the input. Each comment needs a name, date, text, and stars.');
         return;
       }
 
@@ -180,7 +181,7 @@ const CommentsPage: React.FC = () => {
               onChange={(e) => setJsonText(e.target.value)}
               fullWidth
               variant="outlined"
-              placeholder='{"review_id": "example_id", "review_text": "This app is amazing!", "star_rating": 5}'
+              placeholder='{"name": "John Doe", "date": "March 30, 2025", "text": "This app is amazing!", "stars": 5}'
               sx={{ mb: 2 }}
             />
             <Button variant="contained" onClick={handlePasteJson}>
@@ -196,9 +197,10 @@ const CommentsPage: React.FC = () => {
           <Paper variant="outlined" sx={{ p: 2, backgroundColor: (theme) => theme.palette.grey[50] }}>
             <pre style={{ margin: 0, overflow: 'auto' }}>
               {JSON.stringify({
-                review_id: "example_id_123",
-                review_text: "This app is great but could use some improvements in the UI.",
-                star_rating: 4
+                name: "Jane Smith",
+                date: "April 15, 2025",
+                text: "This app is great but could use some improvements in the UI.",
+                stars: 4
               }, null, 2)}
             </pre>
           </Paper>
@@ -218,21 +220,24 @@ const CommentsPage: React.FC = () => {
           
           <List>
             {state.comments.map((comment, index) => (
-              <React.Fragment key={comment.review_id}>
+              <React.Fragment key={`${comment.name}-${comment.date}-${index}`}>
                 {index > 0 && <Divider component="li" />}
                 <ListItem alignItems="flex-start" sx={{ flexDirection: 'column' }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 1 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                       <Typography variant="subtitle2" color="primary">
-                        ID: {comment.review_id}
+                        Name: {comment.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Date: {comment.date}
                       </Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Rating value={comment.star_rating} readOnly max={5} />
+                        <Rating value={comment.stars} readOnly max={5} />
                         <Chip 
-                          label={`${comment.star_rating}/5`} 
+                          label={`${comment.stars}/5`} 
                           size="small" 
                           sx={{ ml: 1 }}
-                          color={comment.star_rating >= 4 ? 'success' : comment.star_rating <= 2 ? 'error' : 'warning'}
+                          color={comment.stars >= 4 ? 'success' : comment.stars <= 2 ? 'error' : 'warning'}
                         />
                       </Box>
                     </Box>
@@ -248,7 +253,7 @@ const CommentsPage: React.FC = () => {
                             textOverflow: 'ellipsis',
                           }}
                         >
-                          {comment.review_text}
+                          {comment.text}
                         </Typography>
                       }
                     />

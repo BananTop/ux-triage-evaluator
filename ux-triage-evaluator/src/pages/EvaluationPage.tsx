@@ -250,20 +250,20 @@ const EvaluationPage: React.FC = () => {
                 Comment {currentCommentIndex + 1} of {state.comments.length}
               </Typography>
               <Typography variant="subtitle2" color="text.secondary">
-                ID: {currentComment.review_id}
+                Name: {currentComment.name}
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Rating value={currentComment.star_rating} readOnly max={5} sx={{ mr: 1 }} />
+              <Rating value={currentComment.stars} readOnly max={5} sx={{ mr: 1 }} />
               <Chip
-                label={`${currentComment.star_rating}/5`}
-                color={currentComment.star_rating >= 4 ? 'success' : currentComment.star_rating <= 2 ? 'error' : 'warning'}
+                label={`${currentComment.stars}/5`}
+                color={currentComment.stars >= 4 ? 'success' : currentComment.stars <= 2 ? 'error' : 'warning'}
               />
             </Box>
           </Box>
 
           <Paper variant="outlined" sx={{ p: 2, mb: 3, backgroundColor: (theme) => theme.palette.grey[50] }}>
-            <Typography variant="body1">{currentComment.review_text}</Typography>
+            <Typography variant="body1">{currentComment.text}</Typography>
           </Paper>
 
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>

@@ -75,10 +75,12 @@ const EvaluationPage: React.FC = () => {
     setSelectedCommentIndex,
     toggleHideLLMScores,
     calculateAlignmentScores,
+    setCurrentPrompt,
   } = useAppContext();
   const [isAnalysisRunning, setIsAnalysisRunning] = useState(false);
   const [analysisSuccess, setAnalysisSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [localPrompt, setLocalPrompt] = useState(state.currentPrompt);
   const navigate = useNavigate();
 
   const currentCommentIndex = state.selectedCommentIndex;
@@ -230,16 +232,34 @@ const EvaluationPage: React.FC = () => {
 
           <Box sx={{ mb: 2 }}>
             <TextField
-              label="Current LLM Prompt"
+              label="Enter LLM Prompt"
               multiline
               rows={3}
-              value={state.currentPrompt}
+              value={localPrompt}
+              onChange={(e) => setLocalPrompt(e.target.value)}
               fullWidth
               variant="outlined"
-              InputProps={{
-                readOnly: true,
-              }}
+              placeholder="Example: You are an expert UX analyst. You will be given app store reviews..."
+              error={!!error && !localPrompt.trim()}
+              helperText={error && !localPrompt.trim() ? 'Please enter a prompt' : ''}
             />
+            <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 2 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => {
+                  if (!localPrompt.trim()) {
+                    setError('Please enter a prompt');
+                    return;
+                  }
+                  setCurrentPrompt(localPrompt);
+                  setError('');
+                }}
+                disabled={!localPrompt.trim()}
+              >
+                Save Prompt
+              </Button>
+            </Box>
           </Box>
         </Paper>
 

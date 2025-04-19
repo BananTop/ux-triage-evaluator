@@ -51,10 +51,10 @@ const PromptPage: React.FC = () => {
   return (
     <Layout>
       <Typography variant="h4" component="h1" gutterBottom>
-        LLM Prompt Editor
+        UX Triage Evaluator
       </Typography>
       <Typography variant="subtitle1" gutterBottom>
-        Create a prompt that instructs the LLM how to evaluate app store comments across UX dimensions.
+        An AI-powered tool for analyzing app store comments across key UX dimensions
       </Typography>
 
       <Paper 
@@ -67,10 +67,24 @@ const PromptPage: React.FC = () => {
         }}
       >
         <Typography variant="h6" gutterBottom>
-          Prompt Guidelines
+          About This Tool
         </Typography>
-        <Typography variant="body2" paragraph>
-          Your prompt should instruct the LLM on how to score app store comments on these UX dimensions:
+        <Typography variant="body1" paragraph>
+          The UX Triage Evaluator helps you analyze user feedback from app store reviews by evaluating them across six essential UX dimensions. Using advanced AI, it provides detailed insights into how users perceive your application.
+        </Typography>
+        
+        <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+          Key Features
+        </Typography>
+        <Typography variant="body1" paragraph>
+          • Automated analysis of app store reviews
+          • Detailed scoring across 6 UX dimensions
+          • AI-powered sentiment analysis
+          • Comprehensive evaluation reports
+        </Typography>
+
+        <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+          UX Dimensions We Analyze
         </Typography>
         <Box display="grid" gridTemplateColumns={{xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)'}} gap={2} sx={{ mb: 2 }}>
           <Box>
@@ -134,21 +148,21 @@ const PromptPage: React.FC = () => {
             </Card>
           </Box>
         </Box>
-        <Typography variant="body2" paragraph>
-          Scoring System: Each dimension should be scored on a scale from -3 (very negative) to +3 (very positive), with 0 being neutral.
+
+        <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+          How It Works
+        </Typography>
+        <Typography variant="body1" paragraph>
+          1. Upload your app store reviews
+          2. Our AI analyzes each review
+          3. Get detailed scores and insights
+          4. Use the data to improve your app
+        </Typography>
+
+        <Typography variant="body2" paragraph sx={{ mt: 3 }}>
+          Each dimension is scored on a scale from -3 (very negative) to +3 (very positive), with 0 being neutral, providing you with precise insights into user sentiment.
         </Typography>
       </Paper>
-
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-        <Button
-          variant="contained"
-          color="secondary"
-          onClick={handleNavigateToComments}
-          disabled={!state.currentPrompt}
-        >
-          Next: Upload Comments
-        </Button>
-      </Box>
 
       {/* Prompt History Preview */}
       {state.promptHistory.length > 0 && (

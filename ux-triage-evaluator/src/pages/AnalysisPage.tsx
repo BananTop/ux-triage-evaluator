@@ -197,10 +197,10 @@ const AnalysisPage: React.FC = () => {
     // Update the current prompt
     setCurrentPrompt(refinedPrompt);
     
-    // Simulate LLM analysis (in a real app, this would call an API)
+    // Simulate LLM analysis (in a real app, this would call an API with the refined prompt)
     setTimeout(() => {
       try {
-        // Mock updating LLM scores while preserving human scores
+        // Step 1: Mock updating LLM scores while preserving human scores
         const updatedEvaluations = state.evaluations.map(evaluation => {
           // Generate new random LLM scores for demonstration (ensuring they're valid Score type values)
           const getRandomScore = (): Score => {
@@ -217,7 +217,7 @@ const AnalysisPage: React.FC = () => {
             novelty: getRandomScore(),
           };
           
-          // Generate new justifications
+          // Generate new justifications - in a real app, these would come from the LLM
           const randomJustifications = {
             attractiveness: `Based on the refined prompt, the comment suggests ${randomScores.attractiveness > 0 ? 'positive' : randomScores.attractiveness < 0 ? 'negative' : 'neutral'} attractiveness.`,
             efficiency: `The app's efficiency appears ${randomScores.efficiency > 0 ? 'good' : randomScores.efficiency < 0 ? 'poor' : 'average'} according to this analysis.`,
@@ -227,33 +227,123 @@ const AnalysisPage: React.FC = () => {
             novelty: `The app offers ${randomScores.novelty > 0 ? 'innovative' : randomScores.novelty < 0 ? 'common' : 'standard'} features.`,
           };
           
+          // Step 2: Calculate new alignment scores for each evaluation
+          const dimensionAlignments = {
+            attractiveness_alignment: calculateSingleAlignment(
+              randomScores.attractiveness,
+              evaluation.human_scores.attractiveness
+            ),
+            efficiency_alignment: calculateSingleAlignment(
+              randomScores.efficiency,
+              evaluation.human_scores.efficiency
+            ),
+            perspicuity_alignment: calculateSingleAlignment(
+              randomScores.perspicuity,
+              evaluation.human_scores.perspicuity
+            ),
+            dependability_alignment: calculateSingleAlignment(
+              randomScores.dependability,
+              evaluation.human_scores.dependability
+            ),
+            stimulation_alignment: calculateSingleAlignment(
+              randomScores.stimulation,
+              evaluation.human_scores.stimulation
+            ),
+            novelty_alignment: calculateSingleAlignment(
+              randomScores.novelty,
+              evaluation.human_scores.novelty
+            ),
+          };
+          
+          // Calculate the overall alignment score
+          const overallAlignmentScore = (
+            dimensionAlignments.attractiveness_alignment +
+            dimensionAlignments.efficiency_alignment +
+            dimensionAlignments.perspicuity_alignment +
+            dimensionAlignments.dependability_alignment +
+            dimensionAlignments.stimulation_alignment +
+            dimensionAlignments.novelty_alignment
+          ) / 6;
+          
           return {
             ...evaluation,
             llm_scores: randomScores,
             llm_justification: randomJustifications,
+            dimension_alignments: dimensionAlignments,
+            overall_alignment_score: overallAlignmentScore
           };
         });
         
-        // Update evaluations with new LLM scores
+        // Step 3: Update evaluations with new LLM scores and alignment scores
         setEvaluations(updatedEvaluations);
         
-        // Add the new prompt to history
+        // Step 4: Force a recalculation of the analysis page metrics
+        // We need to manually calculate the new averages since we haven't triggered the useEffect
+        const newDimensionAverages: Record<string, number> = {};
+        const dimensions = [
+          'attractiveness_alignment',
+          'efficiency_alignment',
+          'perspicuity_alignment',
+          'dependability_alignment',
+          'stimulation_alignment',
+          'novelty_alignment',
+        ];
+        
+        // Calculate new dimension averages
+        dimensions.forEach((dimension) => {
+          const sum = updatedEvaluations.reduce(
+            (total, evaluation) => total + evaluation.dimension_alignments[dimension as keyof typeof evaluation.dimension_alignments],
+            0
+          );
+          newDimensionAverages[dimension] = sum / updatedEvaluations.length;
+        });
+        
+        // Calculate new overall alignment score
+        const newOverallScore = updatedEvaluations.reduce(
+          (sum, evaluation) => sum + evaluation.overall_alignment_score,
+          0
+        ) / updatedEvaluations.length;
+        
+        // Update state with new calculations
+        setOverallAlignmentScore(newOverallScore);
+        setDimensionAverages(newDimensionAverages);
+        
+        // Find new most and least aligned dimensions
+        let highestAlignedDimension = '';
+        let highestAlignmentScore = -1;
+        let lowestAlignedDimension = '';
+        let lowestAlignmentScore = 2;
+        
+        Object.entries(newDimensionAverages).forEach(([dimension, score]) => {
+          if (score > highestAlignmentScore) {
+            highestAlignmentScore = score;
+            highestAlignedDimension = dimension;
+          }
+          if (score < lowestAlignmentScore) {
+            lowestAlignmentScore = score;
+            lowestAlignedDimension = dimension;
+          }
+        });
+        
+        setMostAlignedDimension(highestAlignedDimension);
+        setLeastAlignedDimension(lowestAlignedDimension);
+        
+        // Step 5: Update misaligned comments
+        const sortedComments = [...updatedEvaluations].sort(
+          (a, b) => a.overall_alignment_score - b.overall_alignment_score
+        );
+        setMisalignedComments(sortedComments.slice(0, 3));
+        
+        // Step 6: Add the new prompt to history with the correctly calculated metrics
         addPromptToHistory({
           id: Date.now().toString(),
           prompt: refinedPrompt,
           timestamp: new Date().toISOString(),
-          overall_alignment_score: overallAlignmentScore,
-          dimension_alignments: {
-            attractiveness_alignment: dimensionAverages.attractiveness_alignment || 0,
-            efficiency_alignment: dimensionAverages.efficiency_alignment || 0,
-            perspicuity_alignment: dimensionAverages.perspicuity_alignment || 0,
-            dependability_alignment: dimensionAverages.dependability_alignment || 0,
-            stimulation_alignment: dimensionAverages.stimulation_alignment || 0,
-            novelty_alignment: dimensionAverages.novelty_alignment || 0,
-          },
+          overall_alignment_score: newOverallScore,
+          dimension_alignments: newDimensionAverages as any, // type cast for compatibility
         });
         
-        // Hide the prompt editor
+        // Step 7: Hide the prompt editor and reset loading state
         setShowPromptEditor(false);
         setIsAnalysisRunning(false);
       } catch (error) {
@@ -261,6 +351,15 @@ const AnalysisPage: React.FC = () => {
         setIsAnalysisRunning(false);
       }
     }, 1500); // Simulate API delay
+  };
+  
+  // Helper function to calculate alignment between two scores
+  // Returns value between 0 (no alignment) and 1 (perfect alignment)
+  const calculateSingleAlignment = (llmScore: number, humanScore: number): number => {
+    // Maximum possible difference is 6 (from -3 to +3)
+    const difference = Math.abs(llmScore - humanScore);
+    // Convert to alignment score (0-1 range)
+    return 1 - (difference / 6);
   };
   
   // Export JSON results

@@ -189,81 +189,82 @@ const EvaluationPage: React.FC = () => {
         UX Dimension Evaluation
       </Typography>
 
-      <Box sx={{ mb: 4 }}>
-        <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">
-              LLM Analysis
-            </Typography>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={state.hideLLMScores}
-                  onChange={toggleHideLLMScores}
-                  color="primary"
-                />
-              }
-              label="Hide LLM Scores"
-            />
-          </Box>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          {analysisSuccess && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              LLM analysis completed successfully!
-            </Alert>
-          )}
-
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleRunLLMAnalysis}
-            disabled={isAnalysisRunning}
-            fullWidth
-            sx={{ mb: 2 }}
-          >
-            {isAnalysisRunning ? 'Analyzing...' : 'Run LLM Analysis'}
-          </Button>
-
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              label="Enter LLM Prompt"
-              multiline
-              rows={3}
-              value={localPrompt}
-              onChange={(e) => setLocalPrompt(e.target.value)}
-              fullWidth
-              variant="outlined"
-              placeholder="Example: You are an expert UX analyst. You will be given app store reviews..."
-              error={!!error && !localPrompt.trim()}
-              helperText={error && !localPrompt.trim() ? 'Please enter a prompt' : ''}
-            />
-            <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 2 }}>
-              <Button
-                variant="contained"
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">
+            LLM Analysis
+          </Typography>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={state.hideLLMScores}
+                onChange={toggleHideLLMScores}
                 color="primary"
-                onClick={() => {
-                  if (!localPrompt.trim()) {
-                    setError('Please enter a prompt');
-                    return;
-                  }
-                  setCurrentPrompt(localPrompt);
-                  setError('');
-                }}
-                disabled={!localPrompt.trim()}
-              >
-                Save Prompt
-              </Button>
-            </Box>
-          </Box>
-        </Paper>
+              />
+            }
+            label="Hide LLM Scores"
+          />
+        </Box>
 
-        <Paper elevation={3} sx={{ p: 3 }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        {analysisSuccess && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            LLM analysis completed successfully!
+          </Alert>
+        )}
+
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleRunLLMAnalysis}
+          disabled={isAnalysisRunning}
+          fullWidth
+          sx={{ mb: 2 }}
+        >
+          {isAnalysisRunning ? 'Analyzing...' : 'Run LLM Analysis'}
+        </Button>
+
+        <Box sx={{ mb: 2 }}>
+          <TextField
+            label="Enter LLM Prompt"
+            multiline
+            rows={3}
+            value={localPrompt}
+            onChange={(e) => setLocalPrompt(e.target.value)}
+            fullWidth
+            variant="outlined"
+            placeholder="Example: You are an expert UX analyst. You will be given app store reviews..."
+            error={!!error && !localPrompt.trim()}
+            helperText={error && !localPrompt.trim() ? 'Please enter a prompt' : ''}
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 2 }}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => {
+                if (!localPrompt.trim()) {
+                  setError('Please enter a prompt');
+                  return;
+                }
+                setCurrentPrompt(localPrompt);
+                setError('');
+              }}
+              disabled={!localPrompt.trim()}
+            >
+              Save Prompt
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
+
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        {/* Comment Section */}
+        <Box sx={{ mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Box>
               <Typography variant="h6">
@@ -282,15 +283,16 @@ const EvaluationPage: React.FC = () => {
             </Box>
           </Box>
 
-          <Paper variant="outlined" sx={{ p: 2, mb: 3, backgroundColor: (theme) => theme.palette.grey[50] }}>
+          <Paper variant="outlined" sx={{ p: 2, backgroundColor: (theme) => theme.palette.grey[50], minHeight: '100px', mb: 2 }}>
             <Typography variant="body1">{currentComment.text}</Typography>
           </Paper>
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
             <Button
               variant="outlined"
               onClick={() => handleCommentNavigation('prev')}
               disabled={currentCommentIndex === 0}
+              size="small"
             >
               Previous Comment
             </Button>
@@ -298,38 +300,84 @@ const EvaluationPage: React.FC = () => {
               variant="outlined"
               onClick={() => handleCommentNavigation('next')}
               disabled={currentCommentIndex === state.comments.length - 1}
+              size="small"
             >
               Next Comment
             </Button>
           </Box>
-        </Paper>
-      </Box>
+        </Box>
 
-      <Box display="grid" gridTemplateColumns={{xs: '1fr', md: 'repeat(2, 1fr)'}} gap={3}>
-        {/* Human Evaluation */}
+        <Divider sx={{ my: 2 }} />
+        
+        {/* Dimension Evaluations Grid */}
         <Box>
-          <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
-              Your Evaluation
-            </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Score each UX dimension from -3 (very negative) to +3 (very positive)
-            </Typography>
+          <Typography variant="h6" gutterBottom>
+            UX Dimension Evaluations
+          </Typography>
+          
+          {state.hideLLMScores && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              LLM scores are hidden to prevent bias in your evaluation
+            </Alert>
+          )}
 
-            <Stack spacing={3} sx={{ mt: 3 }}>
-              {(Object.keys(dimensionInfo) as UXDimension[]).map((dimension) => (
-                <FormControl key={dimension} fullWidth>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <InputLabel id={`${dimension}-label`} shrink={false}>
-                      {dimensionInfo[dimension].name}
-                    </InputLabel>
-                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
-                      {dimensionInfo[dimension].description}
+          {/* Grid with dimensions as columns */}
+          <Box 
+            display="grid" 
+            gridTemplateColumns={{
+              xs: '1fr', // One column on very small screens
+              sm: 'repeat(2, 1fr)', // Two columns on small screens
+              md: 'repeat(3, 1fr)', // Three columns on medium screens
+              lg: 'repeat(6, 1fr)' // All 6 dimensions on large screens
+            }} 
+            gap={2}
+          >
+            {(Object.keys(dimensionInfo) as UXDimension[]).map((dimension) => (
+              <Paper 
+                key={dimension} 
+                variant="outlined" 
+                sx={{ 
+                  p: 1.5,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  height: '100%'
+                }}
+              >
+                {/* Dimension Title */}
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', pb: 1, mb: 1 }}>
+                  <Typography variant="subtitle1" fontWeight="bold">
+                    {dimensionInfo[dimension].name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                    {dimensionInfo[dimension].description}
+                  </Typography>
+                </Box>
+                
+                {/* LLM Score & Justification */}
+                {!state.hideLLMScores && (
+                  <Box sx={{ mb: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                      <Typography variant="subtitle2">AI Score:</Typography>
+                      <Chip
+                        label={currentEvaluation.llm_scores[dimension]}
+                        color={getScoreColor(currentEvaluation.llm_scores[dimension])}
+                        size="small"
+                      />
+                    </Box>
+                    <Typography variant="caption" sx={{ fontSize: '0.75rem', display: 'block', mt: 0.5, color: 'text.secondary' }}>
+                      {currentEvaluation.llm_justification[dimension] || 'No justification provided.'}
                     </Typography>
                   </Box>
-                  
+                )}
+                
+                {/* Human Evaluation */}
+                <Box sx={{ mt: 'auto' }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Your Score:
+                  </Typography>
                   <Select
-                    labelId={`${dimension}-label`}
+                    fullWidth
+                    size="small"
                     value={currentEvaluation.human_scores[dimension].toString()}
                     onChange={(e: SelectChangeEvent<string>) => {
                       handleScoreChange(dimension, parseInt(e.target.value) as Score);
@@ -338,55 +386,19 @@ const EvaluationPage: React.FC = () => {
                   >
                     {scoreOptions.map((score) => (
                       <MenuItem key={score} value={score.toString()}>
-                        {score} - {scoreDescriptions[score]}
+                        {score}: {score > 0 ? 'Good' : score < 0 ? 'Bad' : 'Neutral'}
                       </MenuItem>
                     ))}
                   </Select>
-                </FormControl>
-              ))}
-            </Stack>
-          </Paper>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontSize: '0.7rem' }}>
+                    {scoreDescriptions[currentEvaluation.human_scores[dimension] as Score]}
+                  </Typography>
+                </Box>
+              </Paper>
+            ))}
+          </Box>
         </Box>
-
-        {/* LLM Evaluation */}
-        <Box>
-          <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
-              LLM Evaluation
-            </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              The LLM's scores and justifications for this comment
-            </Typography>
-
-            {state.hideLLMScores ? (
-              <Alert severity="info" sx={{ mt: 3 }}>
-                LLM scores are hidden to prevent bias in your evaluation.
-              </Alert>
-            ) : (
-              <Stack spacing={3} sx={{ mt: 3 }}>
-                {(Object.keys(dimensionInfo) as UXDimension[]).map((dimension) => (
-                  <Box key={dimension}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="subtitle1">
-                        {dimensionInfo[dimension].name}
-                      </Typography>
-                      <Chip
-                        label={currentEvaluation.llm_scores[dimension]}
-                        color={getScoreColor(currentEvaluation.llm_scores[dimension])}
-                        size="small"
-                      />
-                    </Box>
-                    <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
-                      {currentEvaluation.llm_justification[dimension] || 'No justification provided.'}
-                    </Typography>
-                    <Divider />
-                  </Box>
-                ))}
-              </Stack>
-            )}
-          </Paper>
-        </Box>
-      </Box>
+      </Paper>
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
         <Button variant="outlined" onClick={() => navigate('/comments')}>

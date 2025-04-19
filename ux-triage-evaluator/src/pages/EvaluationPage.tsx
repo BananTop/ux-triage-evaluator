@@ -31,13 +31,13 @@ const scoreOptions: Score[] = [-3, -2, -1, 0, 1, 2, 3];
 
 // Score descriptions for tooltip
 const scoreDescriptions: Record<Score, string> = {
-  [-3]: 'Extremely negative / Poor',
-  [-2]: 'Very negative',
-  [-1]: 'Somewhat negative',
+  [-3]: 'Very Bad',
+  [-2]: '-2',
+  [-1]: '-1',
   [0]: 'Neutral',
-  [1]: 'Somewhat positive',
-  [2]: 'Very positive',
-  [3]: 'Extremely positive / Excellent',
+  [1]: '+1',
+  [2]: '+2',
+  [3]: 'Very Good',
 };
 
 // Dimension display names and descriptions
@@ -386,7 +386,10 @@ const EvaluationPage: React.FC = () => {
                   >
                     {scoreOptions.map((score) => (
                       <MenuItem key={score} value={score.toString()}>
-                        {score}: {score > 0 ? 'Good' : score < 0 ? 'Bad' : 'Neutral'}
+                        {score === -3 ? `-3: Very Bad` : 
+                         score === 0 ? `0: Neutral` : 
+                         score === 3 ? `+3: Very Good` : 
+                         score > 0 ? `+${score}` : `${score}`}
                       </MenuItem>
                     ))}
                   </Select>

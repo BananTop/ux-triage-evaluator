@@ -15,14 +15,15 @@ import {
   TableRow,
   Chip,
   Divider,
-  Alert
+  Alert,
+  TextField
 } from '@mui/material';
 import { Chart as ChartJS, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend, ScriptableContext, Scale, Tick } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
 import Layout from '../components/Layout';
 import { useAppContext } from '../contexts/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { CommentEvaluation, UXDimension } from '../models/types';
+import { CommentEvaluation, UXDimension, Score, DimensionScores } from '../models/types';
 
 // Register ChartJS components
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
@@ -38,13 +39,18 @@ const dimensionLabels: Record<string, string> = {
 };
 
 const AnalysisPage: React.FC = () => {
-  const { state, addPromptToHistory } = useAppContext();
+  const { state, addPromptToHistory, setCurrentPrompt, setEvaluations } = useAppContext();
   const navigate = useNavigate();
   const [misalignedComments, setMisalignedComments] = useState<CommentEvaluation[]>([]);
   const [mostAlignedDimension, setMostAlignedDimension] = useState<string>('');
   const [leastAlignedDimension, setLeastAlignedDimension] = useState<string>('');
   const [overallAlignmentScore, setOverallAlignmentScore] = useState(0);
   const [dimensionAverages, setDimensionAverages] = useState<Record<string, number>>({});
+  
+  // State for prompt refinement
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
+  const [refinedPrompt, setRefinedPrompt] = useState(state.currentPrompt);
+  const [isAnalysisRunning, setIsAnalysisRunning] = useState(false);
 
   // Reference for the chart canvas (for export)
   const chartRef = useRef<ChartJS<'radar', number[], unknown>>(null);
@@ -180,6 +186,83 @@ const AnalysisPage: React.FC = () => {
     maintainAspectRatio: false,
   };
 
+  // Handle running analysis with refined prompt
+  const handleUpdatePrompt = () => {
+    if (!refinedPrompt.trim()) {
+      return;
+    }
+    
+    setIsAnalysisRunning(true);
+    
+    // Update the current prompt
+    setCurrentPrompt(refinedPrompt);
+    
+    // Simulate LLM analysis (in a real app, this would call an API)
+    setTimeout(() => {
+      try {
+        // Mock updating LLM scores while preserving human scores
+        const updatedEvaluations = state.evaluations.map(evaluation => {
+          // Generate new random LLM scores for demonstration (ensuring they're valid Score type values)
+          const getRandomScore = (): Score => {
+            const scores: Score[] = [-3, -2, -1, 0, 1, 2, 3];
+            return scores[Math.floor(Math.random() * scores.length)];
+          };
+          
+          const randomScores: DimensionScores = {
+            attractiveness: getRandomScore(),
+            efficiency: getRandomScore(),
+            perspicuity: getRandomScore(),
+            dependability: getRandomScore(),
+            stimulation: getRandomScore(),
+            novelty: getRandomScore(),
+          };
+          
+          // Generate new justifications
+          const randomJustifications = {
+            attractiveness: `Based on the refined prompt, the comment suggests ${randomScores.attractiveness > 0 ? 'positive' : randomScores.attractiveness < 0 ? 'negative' : 'neutral'} attractiveness.`,
+            efficiency: `The app's efficiency appears ${randomScores.efficiency > 0 ? 'good' : randomScores.efficiency < 0 ? 'poor' : 'average'} according to this analysis.`,
+            perspicuity: `User finds the app ${randomScores.perspicuity > 0 ? 'easy' : randomScores.perspicuity < 0 ? 'hard' : 'moderately easy'} to understand.`,
+            dependability: `The app shows ${randomScores.dependability > 0 ? 'good' : randomScores.dependability < 0 ? 'poor' : 'average'} reliability.`,
+            stimulation: `User appears ${randomScores.stimulation > 0 ? 'engaged' : randomScores.stimulation < 0 ? 'disinterested' : 'neutral'} with the app.`,
+            novelty: `The app offers ${randomScores.novelty > 0 ? 'innovative' : randomScores.novelty < 0 ? 'common' : 'standard'} features.`,
+          };
+          
+          return {
+            ...evaluation,
+            llm_scores: randomScores,
+            llm_justification: randomJustifications,
+          };
+        });
+        
+        // Update evaluations with new LLM scores
+        setEvaluations(updatedEvaluations);
+        
+        // Add the new prompt to history
+        addPromptToHistory({
+          id: Date.now().toString(),
+          prompt: refinedPrompt,
+          timestamp: new Date().toISOString(),
+          overall_alignment_score: overallAlignmentScore,
+          dimension_alignments: {
+            attractiveness_alignment: dimensionAverages.attractiveness_alignment || 0,
+            efficiency_alignment: dimensionAverages.efficiency_alignment || 0,
+            perspicuity_alignment: dimensionAverages.perspicuity_alignment || 0,
+            dependability_alignment: dimensionAverages.dependability_alignment || 0,
+            stimulation_alignment: dimensionAverages.stimulation_alignment || 0,
+            novelty_alignment: dimensionAverages.novelty_alignment || 0,
+          },
+        });
+        
+        // Hide the prompt editor
+        setShowPromptEditor(false);
+        setIsAnalysisRunning(false);
+      } catch (error) {
+        console.error('Error updating analysis:', error);
+        setIsAnalysisRunning(false);
+      }
+    }, 1500); // Simulate API delay
+  };
+  
   // Export JSON results
   const handleExportResults = () => {
     // Prepare the data to export
@@ -476,12 +559,53 @@ const AnalysisPage: React.FC = () => {
               <Button
                 variant="contained"
                 color="secondary"
-                onClick={() => navigate('/')}
+                onClick={() => setShowPromptEditor(!showPromptEditor)}
               >
                 Refine Prompt
               </Button>
             </Box>
           </Box>
+          
+          {/* Prompt Refinement UI */}
+          {showPromptEditor && (
+            <Paper elevation={3} sx={{ mt: 3, p: 3, gridColumn: '1 / -1' }}>
+              <Typography variant="h6" gutterBottom>
+                Refine Your Prompt
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Edit your prompt below to improve LLM analysis. Human scores will be preserved.
+              </Typography>
+              
+              <TextField
+                label="Edit Prompt"
+                multiline
+                rows={4}
+                value={refinedPrompt}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setRefinedPrompt(e.target.value)}
+                fullWidth
+                variant="outlined"
+                sx={{ mb: 2 }}
+              />
+              
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button 
+                  variant="outlined" 
+                  onClick={() => setShowPromptEditor(false)}
+                  sx={{ mr: 2 }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleUpdatePrompt}
+                  disabled={!refinedPrompt.trim() || isAnalysisRunning}
+                >
+                  {isAnalysisRunning ? 'Updating...' : 'Update Prompt & Rerun Analysis'}
+                </Button>
+              </Box>
+            </Paper>
+          )}
         </Box>
       </Box>
     </Layout>

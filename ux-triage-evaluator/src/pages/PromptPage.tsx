@@ -139,29 +139,7 @@ const PromptPage: React.FC = () => {
         </Typography>
       </Paper>
 
-      <TextField
-        label="Enter your LLM prompt"
-        multiline
-        rows={10}
-        value={localPrompt}
-        onChange={handlePromptChange}
-        fullWidth
-        variant="outlined"
-        placeholder="Example: You are an expert UX analyst. You will be given app store reviews. Score each review on the 6 UX dimensions (Attractiveness, Efficiency, Perspicuity, Dependability, Stimulation, Novelty) on a scale from -3 to +3. For each dimension, provide a brief justification for your score."
-        error={!!error}
-        helperText={error}
-        sx={{ mb: 3 }}
-      />
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleSavePrompt}
-          disabled={!localPrompt.trim()}
-        >
-          Save Prompt
-        </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
         <Button
           variant="contained"
           color="secondary"

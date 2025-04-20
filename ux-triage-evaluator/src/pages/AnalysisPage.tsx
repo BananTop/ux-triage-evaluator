@@ -16,14 +16,16 @@ import {
   Chip,
   Divider,
   Alert,
-  TextField
+  TextField,
+  CircularProgress
 } from '@mui/material';
 import { Chart as ChartJS, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend, ScriptableContext, Scale, Tick } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
 import Layout from '../components/Layout';
 import { useAppContext } from '../contexts/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { CommentEvaluation, UXDimension, Score, DimensionScores } from '../models/types';
+import { CommentEvaluation, UXDimension, Score, DimensionScores, LLMJustification } from '../models/types';
+import { evaluateComment } from '../services/llmService';
 
 // Register ChartJS components
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
@@ -51,6 +53,16 @@ const AnalysisPage: React.FC = () => {
   const [showPromptEditor, setShowPromptEditor] = useState(false);
   const [refinedPrompt, setRefinedPrompt] = useState(state.currentPrompt);
   const [isAnalysisRunning, setIsAnalysisRunning] = useState(false);
+  
+  // Temporary state for debugging LLM responses
+  interface DebugResponse {
+    commentData: { name: string; text: string; stars: number };
+    apiResponse: any;
+    evaluation: CommentEvaluation;
+  }
+  
+  const [llmResponses, setLlmResponses] = useState<DebugResponse[]>([]);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
 
   // Reference for the chart canvas (for export)
   const chartRef = useRef<ChartJS<'radar', number[], unknown>>(null);
@@ -186,8 +198,17 @@ const AnalysisPage: React.FC = () => {
     maintainAspectRatio: false,
   };
 
+  // Helper function to calculate alignment between two scores
+  // Returns value between 0 (no alignment) and 1 (perfect alignment)
+  const calculateSingleAlignment = (llmScore: number, humanScore: number): number => {
+    // Maximum possible difference is 6 (from -3 to +3)
+    const difference = Math.abs(llmScore - humanScore);
+    // Convert to alignment score (0-1 range)
+    return 1 - (difference / 6);
+  };
+
   // Handle running analysis with refined prompt
-  const handleUpdatePrompt = () => {
+  const handleUpdatePrompt = async () => {
     if (!refinedPrompt.trim()) {
       return;
     }
@@ -197,169 +218,172 @@ const AnalysisPage: React.FC = () => {
     // Update the current prompt
     setCurrentPrompt(refinedPrompt);
     
-    // Simulate LLM analysis (in a real app, this would call an API with the refined prompt)
-    setTimeout(() => {
-      try {
-        // Step 1: Mock updating LLM scores while preserving human scores
-        const updatedEvaluations = state.evaluations.map(evaluation => {
-          // Generate new random LLM scores for demonstration (ensuring they're valid Score type values)
-          const getRandomScore = (): Score => {
-            const scores: Score[] = [-3, -2, -1, 0, 1, 2, 3];
-            return scores[Math.floor(Math.random() * scores.length)];
-          };
-          
-          const randomScores: DimensionScores = {
-            attractiveness: getRandomScore(),
-            efficiency: getRandomScore(),
-            perspicuity: getRandomScore(),
-            dependability: getRandomScore(),
-            stimulation: getRandomScore(),
-            novelty: getRandomScore(),
-          };
-          
-          // Generate new justifications - in a real app, these would come from the LLM
-          const randomJustifications = {
-            attractiveness: `Based on the refined prompt, the comment suggests ${randomScores.attractiveness > 0 ? 'positive' : randomScores.attractiveness < 0 ? 'negative' : 'neutral'} attractiveness.`,
-            efficiency: `The app's efficiency appears ${randomScores.efficiency > 0 ? 'good' : randomScores.efficiency < 0 ? 'poor' : 'average'} according to this analysis.`,
-            perspicuity: `User finds the app ${randomScores.perspicuity > 0 ? 'easy' : randomScores.perspicuity < 0 ? 'hard' : 'moderately easy'} to understand.`,
-            dependability: `The app shows ${randomScores.dependability > 0 ? 'good' : randomScores.dependability < 0 ? 'poor' : 'average'} reliability.`,
-            stimulation: `User appears ${randomScores.stimulation > 0 ? 'engaged' : randomScores.stimulation < 0 ? 'disinterested' : 'neutral'} with the app.`,
-            novelty: `The app offers ${randomScores.novelty > 0 ? 'innovative' : randomScores.novelty < 0 ? 'common' : 'standard'} features.`,
-          };
-          
-          // Step 2: Calculate new alignment scores for each evaluation
-          const dimensionAlignments = {
-            attractiveness_alignment: calculateSingleAlignment(
-              randomScores.attractiveness,
-              evaluation.human_scores.attractiveness
-            ),
-            efficiency_alignment: calculateSingleAlignment(
-              randomScores.efficiency,
-              evaluation.human_scores.efficiency
-            ),
-            perspicuity_alignment: calculateSingleAlignment(
-              randomScores.perspicuity,
-              evaluation.human_scores.perspicuity
-            ),
-            dependability_alignment: calculateSingleAlignment(
-              randomScores.dependability,
-              evaluation.human_scores.dependability
-            ),
-            stimulation_alignment: calculateSingleAlignment(
-              randomScores.stimulation,
-              evaluation.human_scores.stimulation
-            ),
-            novelty_alignment: calculateSingleAlignment(
-              randomScores.novelty,
-              evaluation.human_scores.novelty
-            ),
-          };
-          
-          // Calculate the overall alignment score
-          const overallAlignmentScore = (
-            dimensionAlignments.attractiveness_alignment +
-            dimensionAlignments.efficiency_alignment +
-            dimensionAlignments.perspicuity_alignment +
-            dimensionAlignments.dependability_alignment +
-            dimensionAlignments.stimulation_alignment +
-            dimensionAlignments.novelty_alignment
-          ) / 6;
-          
-          return {
-            ...evaluation,
-            llm_scores: randomScores,
-            llm_justification: randomJustifications,
-            dimension_alignments: dimensionAlignments,
-            overall_alignment_score: overallAlignmentScore
-          };
-        });
-        
-        // Step 3: Update evaluations with new LLM scores and alignment scores
-        setEvaluations(updatedEvaluations);
-        
-        // Step 4: Force a recalculation of the analysis page metrics
-        // We need to manually calculate the new averages since we haven't triggered the useEffect
-        const newDimensionAverages: Record<string, number> = {};
-        const dimensions = [
-          'attractiveness_alignment',
-          'efficiency_alignment',
-          'perspicuity_alignment',
-          'dependability_alignment',
-          'stimulation_alignment',
-          'novelty_alignment',
-        ];
-        
-        // Calculate new dimension averages
-        dimensions.forEach((dimension) => {
-          const sum = updatedEvaluations.reduce(
-            (total, evaluation) => total + evaluation.dimension_alignments[dimension as keyof typeof evaluation.dimension_alignments],
-            0
+    try {
+      // Step 1: Process each comment with the LLM API
+      const updatedEvaluationsPromises = state.evaluations.map(async (evaluation) => {
+        try {
+          // Call the LLM API for each comment
+          const { name, date, text, stars } = evaluation;
+          const result = await evaluateComment(
+            { name, date, text, stars },
+            refinedPrompt,
+            state.llmSettings
           );
-          newDimensionAverages[dimension] = sum / updatedEvaluations.length;
-        });
+          
+          // Extract scores and justifications from the API response
+          const newScores = result.scores;
+          const newJustifications = result.justifications;
+          
+          // Store result for debugging
+          return {
+            commentData: { name, text, stars },
+            apiResponse: result,
+            evaluation
+          };
+          
+
+        } catch (error) {
+          console.error(`Error processing comment ${evaluation.name}:`, error);
+          // Return the evaluation unchanged if there's an error
+          return evaluation;
+        }
+      });
+      
+      // Wait for all API calls to complete
+      const apiResults = await Promise.all(updatedEvaluationsPromises);
+      
+      // Store API responses for debugging
+      setLlmResponses(apiResults as DebugResponse[]);
+      
+      // Transform API results into updated evaluations
+      const updatedEvaluations = apiResults.map(result => {
+        // Type assertion to handle the response structure
+        const debugResult = result as DebugResponse;
+        const { apiResponse, evaluation } = debugResult;
         
-        // Calculate new overall alignment score
-        const newOverallScore = updatedEvaluations.reduce(
-          (sum, evaluation) => sum + evaluation.overall_alignment_score,
+        // Calculate alignment scores
+        const dimensionAlignments = {
+          attractiveness_alignment: calculateSingleAlignment(
+            apiResponse.scores.attractiveness,
+            evaluation.human_scores.attractiveness
+          ),
+          efficiency_alignment: calculateSingleAlignment(
+            apiResponse.scores.efficiency,
+            evaluation.human_scores.efficiency
+          ),
+          perspicuity_alignment: calculateSingleAlignment(
+            apiResponse.scores.perspicuity,
+            evaluation.human_scores.perspicuity
+          ),
+          dependability_alignment: calculateSingleAlignment(
+            apiResponse.scores.dependability,
+            evaluation.human_scores.dependability
+          ),
+          stimulation_alignment: calculateSingleAlignment(
+            apiResponse.scores.stimulation,
+            evaluation.human_scores.stimulation
+          ),
+          novelty_alignment: calculateSingleAlignment(
+            apiResponse.scores.novelty,
+            evaluation.human_scores.novelty
+          ),
+        };
+        
+        // Calculate overall alignment score
+        const overallAlignmentScore = (
+          dimensionAlignments.attractiveness_alignment +
+          dimensionAlignments.efficiency_alignment +
+          dimensionAlignments.perspicuity_alignment +
+          dimensionAlignments.dependability_alignment +
+          dimensionAlignments.stimulation_alignment +
+          dimensionAlignments.novelty_alignment
+        ) / 6;
+        
+        return {
+          ...evaluation,
+          llm_scores: apiResponse.scores,
+          llm_justification: apiResponse.justifications,
+          dimension_alignments: dimensionAlignments,
+          overall_alignment_score: overallAlignmentScore
+        };
+      });
+      
+      // Step 3: Update evaluations with new LLM scores and alignment scores
+      setEvaluations(updatedEvaluations);
+      
+      // Step 4: Force a recalculation of the analysis page metrics
+      // We need to manually calculate the new averages since we haven't triggered the useEffect
+      const newDimensionAverages: Record<string, number> = {};
+      const dimensions = [
+        'attractiveness_alignment',
+        'efficiency_alignment',
+        'perspicuity_alignment',
+        'dependability_alignment',
+        'stimulation_alignment',
+        'novelty_alignment',
+      ];
+      
+      // Calculate new dimension averages
+      dimensions.forEach((dimension) => {
+        const sum = updatedEvaluations.reduce(
+          (total, evaluation) => total + evaluation.dimension_alignments[dimension as keyof typeof evaluation.dimension_alignments],
           0
-        ) / updatedEvaluations.length;
-        
-        // Update state with new calculations
-        setOverallAlignmentScore(newOverallScore);
-        setDimensionAverages(newDimensionAverages);
-        
-        // Find new most and least aligned dimensions
-        let highestAlignedDimension = '';
-        let highestAlignmentScore = -1;
-        let lowestAlignedDimension = '';
-        let lowestAlignmentScore = 2;
-        
-        Object.entries(newDimensionAverages).forEach(([dimension, score]) => {
-          if (score > highestAlignmentScore) {
-            highestAlignmentScore = score;
-            highestAlignedDimension = dimension;
-          }
-          if (score < lowestAlignmentScore) {
-            lowestAlignmentScore = score;
-            lowestAlignedDimension = dimension;
-          }
-        });
-        
-        setMostAlignedDimension(highestAlignedDimension);
-        setLeastAlignedDimension(lowestAlignedDimension);
-        
-        // Step 5: Update misaligned comments
-        const sortedComments = [...updatedEvaluations].sort(
-          (a, b) => a.overall_alignment_score - b.overall_alignment_score
         );
-        setMisalignedComments(sortedComments.slice(0, 3));
-        
-        // Step 6: Add the new prompt to history with the correctly calculated metrics
-        addPromptToHistory({
-          id: Date.now().toString(),
-          prompt: refinedPrompt,
-          timestamp: new Date().toISOString(),
-          overall_alignment_score: newOverallScore,
-          dimension_alignments: newDimensionAverages as any, // type cast for compatibility
-        });
-        
-        // Step 7: Hide the prompt editor and reset loading state
-        setShowPromptEditor(false);
-        setIsAnalysisRunning(false);
-      } catch (error) {
-        console.error('Error updating analysis:', error);
-        setIsAnalysisRunning(false);
-      }
-    }, 1500); // Simulate API delay
-  };
-  
-  // Helper function to calculate alignment between two scores
-  // Returns value between 0 (no alignment) and 1 (perfect alignment)
-  const calculateSingleAlignment = (llmScore: number, humanScore: number): number => {
-    // Maximum possible difference is 6 (from -3 to +3)
-    const difference = Math.abs(llmScore - humanScore);
-    // Convert to alignment score (0-1 range)
-    return 1 - (difference / 6);
+        newDimensionAverages[dimension] = sum / updatedEvaluations.length;
+      });
+      
+      // Calculate new overall alignment score
+      const newOverallScore = updatedEvaluations.reduce(
+        (sum, evaluation) => sum + evaluation.overall_alignment_score,
+        0
+      ) / updatedEvaluations.length;
+      
+      // Update state with new calculations
+      setOverallAlignmentScore(newOverallScore);
+      setDimensionAverages(newDimensionAverages);
+      
+      // Find new most and least aligned dimensions
+      let highestAlignedDimension = '';
+      let highestAlignmentScore = -1;
+      let lowestAlignedDimension = '';
+      let lowestAlignmentScore = 2;
+      
+      Object.entries(newDimensionAverages).forEach(([dimension, score]) => {
+        if (score > highestAlignmentScore) {
+          highestAlignmentScore = score;
+          highestAlignedDimension = dimension;
+        }
+        if (score < lowestAlignmentScore) {
+          lowestAlignmentScore = score;
+          lowestAlignedDimension = dimension;
+        }
+      });
+      
+      setMostAlignedDimension(highestAlignedDimension);
+      setLeastAlignedDimension(lowestAlignedDimension);
+      
+      // Step 5: Update misaligned comments
+      const sortedComments = [...updatedEvaluations].sort(
+        (a, b) => a.overall_alignment_score - b.overall_alignment_score
+      );
+      setMisalignedComments(sortedComments.slice(0, 3));
+      
+      // Step 6: Add the new prompt to history with the correctly calculated metrics
+      addPromptToHistory({
+        id: Date.now().toString(),
+        prompt: refinedPrompt,
+        timestamp: new Date().toISOString(),
+        overall_alignment_score: newOverallScore,
+        dimension_alignments: newDimensionAverages as any, // type cast for compatibility
+      });
+      
+      // Step 7: Hide the prompt editor and reset loading state
+      setShowPromptEditor(false);
+      setIsAnalysisRunning(false);
+    } catch (error) {
+      console.error('Error updating analysis:', error);
+      setIsAnalysisRunning(false);
+    }
   };
   
   // Export JSON results
@@ -640,6 +664,43 @@ const AnalysisPage: React.FC = () => {
           </Paper>
         </Box>
 
+        {/* Temporary Debug Section */}
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">API Response Debug (Temporary)</Typography>
+              <Button 
+                variant="outlined" 
+                color="primary"
+                onClick={() => setShowDebugInfo(!showDebugInfo)}
+              >
+                {showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
+              </Button>
+            </Box>
+            {showDebugInfo && (
+              <Box sx={{ mt: 2, maxHeight: '400px', overflow: 'auto' }}>
+                {llmResponses.length > 0 ? (
+                  llmResponses.map((response, index) => (
+                    <Box key={index} sx={{ mb: 3, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
+                      <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                        Comment: {response.commentData.name}
+                      </Typography>
+                      <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
+                        API Response:
+                      </Typography>
+                      <pre style={{ background: '#f5f5f5', padding: '1rem', borderRadius: '4px', overflow: 'auto' }}>
+                        {JSON.stringify(response.apiResponse, null, 2)}
+                      </pre>
+                    </Box>
+                  ))
+                ) : (
+                  <Typography color="text.secondary">No API responses yet. Refine a prompt to see data.</Typography>
+                )}
+              </Box>
+            )}
+          </Paper>
+        </Box>
+
         {/* Action Buttons */}
         <Box sx={{ gridColumn: '1 / -1' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
@@ -700,8 +761,13 @@ const AnalysisPage: React.FC = () => {
                   onClick={handleUpdatePrompt}
                   disabled={!refinedPrompt.trim() || isAnalysisRunning}
                 >
-                  {isAnalysisRunning ? 'Updating...' : 'Update Prompt & Rerun Analysis'}
-                </Button>
+                {isAnalysisRunning ? (
+                  <>
+                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                    Analyzing...
+                  </>
+                ) : 'Update Prompt & Rerun Analysis'}
+              </Button>
               </Box>
             </Paper>
           )}

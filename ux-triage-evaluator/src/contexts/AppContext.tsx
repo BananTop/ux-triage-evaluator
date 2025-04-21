@@ -59,36 +59,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
   }, []);
 
-  // Add prompt to history with deduplication logic
+  // Add prompt to history - always add as a new entry to track each run separately
   const addPromptToHistory = React.useCallback((entry: PromptHistoryEntry) => {
-    setState((prevState) => {
-      // Check if this prompt text already exists in the history
-      const existingPromptIndex = prevState.promptHistory.findIndex(
-        (historyEntry) => historyEntry.prompt.trim() === entry.prompt.trim()
-      );
-      
-      // If the prompt already exists, update it instead of adding a new one
-      if (existingPromptIndex !== -1) {
-        console.log('Updating existing prompt in history instead of creating duplicate');
-        const updatedHistory = [...prevState.promptHistory];
-        updatedHistory[existingPromptIndex] = {
-          ...updatedHistory[existingPromptIndex],
-          // Keep the original ID and timestamp but update metrics
-          overall_alignment_score: entry.overall_alignment_score,
-          dimension_alignments: entry.dimension_alignments,
-        };
-        return {
-          ...prevState,
-          promptHistory: updatedHistory,
-        };
-      }
-      
-      // Otherwise add as a new entry
-      return {
-        ...prevState,
-        promptHistory: [entry, ...prevState.promptHistory],
-      };
-    });
+    // Ensure each entry has unique ID and timestamp
+    const historyEntry = {
+      ...entry,
+      id: Date.now().toString(), // Ensure unique ID
+      timestamp: new Date().toISOString(), // Current timestamp
+      // Include run number in the entry
+      runId: Date.now().toString(),
+    };
+    
+    // Always add as a new entry at the beginning of history
+    setState((prevState) => ({
+      ...prevState,
+      promptHistory: [historyEntry, ...prevState.promptHistory],
+    }));
+    
+    console.log('Added new prompt history entry:', historyEntry);
   }, []);
 
   // Update comments

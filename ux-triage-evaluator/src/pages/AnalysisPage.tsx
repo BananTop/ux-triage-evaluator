@@ -147,6 +147,7 @@ const AnalysisPage: React.FC = () => {
         id: Date.now().toString(),
         prompt: state.currentPrompt,
         timestamp: new Date().toISOString(),
+        runId: `initial-${Date.now()}`, // Add unique run ID for initial analysis
         overall_alignment_score: calculatedOverallAlignmentScore,
         dimension_alignments: {
           attractiveness_alignment: dimensionSums.attractiveness_alignment,
@@ -400,11 +401,12 @@ const AnalysisPage: React.FC = () => {
       setMisalignedComments(sortedComments.slice(0, 3));
       
       // Step 6: Add the new prompt to history with the correctly calculated metrics
-      // The improved addPromptToHistory function will handle deduplication
+      // Each run creates a new history entry - no deduplication
       addPromptToHistory({
         id: Date.now().toString(),
         prompt: refinedPrompt,
         timestamp: new Date().toISOString(),
+        runId: `refined-${Date.now()}`, // Add unique run ID for refinements
         overall_alignment_score: newOverallScore,
         dimension_alignments: newDimensionAverages as any, // type cast for compatibility
       });

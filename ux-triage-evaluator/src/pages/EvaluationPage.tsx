@@ -185,6 +185,7 @@ const EvaluationPage: React.FC = () => {
         id: Date.now().toString(),
         prompt: state.currentPrompt,
         timestamp: new Date().toISOString(),
+        runId: `run-${Date.now()}`, // Add unique run ID
         overall_alignment_score: overallScore,
         dimension_alignments: dimensionAverages as any, // Type cast for compatibility
       });

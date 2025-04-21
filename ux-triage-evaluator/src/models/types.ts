@@ -56,6 +56,7 @@ export interface PromptHistoryEntry {
   id: string;
   prompt: string;
   timestamp: string;
+  runId: string; // Unique ID for each analysis run
   overall_alignment_score: number;
   dimension_alignments: DimensionAlignment;
 }

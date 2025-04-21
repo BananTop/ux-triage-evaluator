@@ -33,7 +33,7 @@ const AppContext = createContext<{
   setEvaluations: (evaluations: CommentEvaluation[]) => void;
   setSelectedCommentIndex: (index: number) => void;
   toggleHideLLMScores: () => void;
-  calculateAlignmentScores: () => void;
+  calculateAlignmentScores: (evaluationsToUse?: CommentEvaluation[]) => void;
   updateLLMSettings: (settings: Partial<LLMSettings>) => void;
 }>({
   state: initialState,
@@ -137,10 +137,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Calculate alignment scores for current evaluations
-  const calculateAlignmentScores = React.useCallback(() => {
-    if (state.evaluations.length === 0) return;
+  // Pass current evaluations as parameter to avoid stale closure issues
+  const calculateAlignmentScores = React.useCallback((evaluationsToUse?: CommentEvaluation[]) => {
+    // Use passed evaluations or fall back to state.evaluations
+    const currentEvaluations = evaluationsToUse || state.evaluations;
+    
+    if (currentEvaluations.length === 0) return;
+    
+    console.log('Calculating alignment scores for evaluations:', currentEvaluations);
 
-    const updatedEvaluations = state.evaluations.map((evaluation) => {
+    const updatedEvaluations = currentEvaluations.map((evaluation) => {
       // Calculate alignment for each dimension
       const dimensionAlignments = {
         attractiveness_alignment: calculateSingleAlignment(
@@ -190,7 +196,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...prevState,
       evaluations: updatedEvaluations,
     }));
-  }, [state.evaluations]);
+  }, []); // Remove dependency on state.evaluations to prevent stale closures
 
   // Helper function to calculate alignment between two scores
   // Returns value between 0 (no alignment) and 1 (perfect alignment)

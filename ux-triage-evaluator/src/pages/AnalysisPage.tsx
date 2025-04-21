@@ -41,7 +41,7 @@ const dimensionLabels: Record<string, string> = {
 };
 
 const AnalysisPage: React.FC = () => {
-  const { state, addPromptToHistory, setCurrentPrompt, setEvaluations } = useAppContext();
+  const { state, addPromptToHistory, setCurrentPrompt, setEvaluations, calculateAlignmentScores } = useAppContext();
   const navigate = useNavigate();
   const [misalignedComments, setMisalignedComments] = useState<CommentEvaluation[]>([]);
   const [mostAlignedDimension, setMostAlignedDimension] = useState<string>('');
@@ -325,12 +325,25 @@ const AnalysisPage: React.FC = () => {
         };
       });
       
-      // Step 3: Update evaluations with new LLM scores and alignment scores
-      setEvaluations(updatedEvaluations);
+      // Step 3: Update evaluations and recalculate alignment scores
+      // First update the LLM scores and justifications in the evaluations
+      const evaluationsWithLLMScores = updatedEvaluations.map(evaluation => ({
+        ...evaluation,
+        llm_scores: evaluation.llm_scores,       // These are already set correctly from the API
+        llm_justification: evaluation.llm_justification  // These are already set correctly from the API
+      }));
+      
+      console.log('Setting updated evaluations with LLM scores:', evaluationsWithLLMScores);
+      
+      // Update the evaluations with LLM scores
+      setEvaluations(evaluationsWithLLMScores);
+      
+      // Use the calculateAlignmentScores function to calculate scores and update state
+      // This will update the dimension_alignments and overall_alignment_score
+      calculateAlignmentScores(evaluationsWithLLMScores);
       
       // Step 4: Force a recalculation of the analysis page metrics
-      // We need to manually calculate the new averages since we haven't triggered the useEffect
-      const newDimensionAverages: Record<string, number> = {};
+      // After alignment scores are calculated, compute the averages
       const dimensions = [
         'attractiveness_alignment',
         'efficiency_alignment',
@@ -340,20 +353,21 @@ const AnalysisPage: React.FC = () => {
         'novelty_alignment',
       ];
       
-      // Calculate new dimension averages
+      // Calculate new dimension averages after alignment scores have been updated
+      const newDimensionAverages: Record<string, number> = {};
       dimensions.forEach((dimension) => {
-        const sum = updatedEvaluations.reduce(
+        const sum = evaluationsWithLLMScores.reduce(
           (total, evaluation) => total + evaluation.dimension_alignments[dimension as keyof typeof evaluation.dimension_alignments],
           0
         );
-        newDimensionAverages[dimension] = sum / updatedEvaluations.length;
+        newDimensionAverages[dimension] = sum / evaluationsWithLLMScores.length;
       });
       
       // Calculate new overall alignment score
-      const newOverallScore = updatedEvaluations.reduce(
+      const newOverallScore = evaluationsWithLLMScores.reduce(
         (sum, evaluation) => sum + evaluation.overall_alignment_score,
         0
-      ) / updatedEvaluations.length;
+      ) / evaluationsWithLLMScores.length;
       
       // Update state with new calculations
       setOverallAlignmentScore(newOverallScore);

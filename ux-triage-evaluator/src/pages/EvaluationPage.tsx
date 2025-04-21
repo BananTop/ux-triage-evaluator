@@ -141,11 +141,21 @@ const EvaluationPage: React.FC = () => {
       
       // Store debug responses in localStorage for the Analysis page to access
       localStorage.setItem('llmDebugResponses', JSON.stringify(debugResponses));
-
-        setEvaluations(updatedEvaluations);
-        calculateAlignmentScores(); // Calculate alignment between human and LLM scores
-        setAnalysisSuccess(true);
-        setIsAnalysisRunning(false);
+      
+      // Log the evaluations to make sure they have proper scores
+      console.log('LLM API responses:', debugResponses);
+      console.log('Updated evaluations with LLM scores:', updatedEvaluations);
+      
+      // Update state with the new evaluations
+      setEvaluations(updatedEvaluations);
+      
+      // Calculate alignment scores between human and LLM
+      // Pass the updated evaluations directly to ensure we're using the latest data
+      calculateAlignmentScores(updatedEvaluations);
+      
+      // Update UI state
+      setAnalysisSuccess(true);
+      setIsAnalysisRunning(false);
       } catch (error) {
         console.error('Error during analysis:', error);
         setError('An error occurred during analysis. Please try again.');

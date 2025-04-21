@@ -161,11 +161,20 @@ const validateResponse = (response: any): void => {
       throw new Error(`Invalid response format: missing justification for ${dim}`);
     }
     
-    // Ensure scores are valid (-3 to 3)
-    const score = response.scores[dim];
-    if (typeof score !== 'number' || score < -3 || score > 3 || !Number.isInteger(score)) {
+    // Ensure scores are valid (-3 to 3) and explicitly cast to number
+    let score = response.scores[dim];
+    // Handle string score values which might come from API
+    if (typeof score === 'string') {
+      score = parseFloat(score);
+    }
+    
+    // Ensure the score is within valid range and is an integer
+    if (typeof score !== 'number' || isNaN(score) || score < -3 || score > 3 || !Number.isInteger(score)) {
       // Clamp and round the score to ensure it's within valid range
-      response.scores[dim] = Math.max(-3, Math.min(3, Math.round(score))) as Score;
+      response.scores[dim] = Math.max(-3, Math.min(3, Math.round(typeof score === 'number' ? score : 0))) as Score;
+    } else {
+      // Explicitly cast to Score type
+      response.scores[dim] = score as Score;
     }
   }
 };

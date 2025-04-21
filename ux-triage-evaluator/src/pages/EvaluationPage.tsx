@@ -77,6 +77,7 @@ const EvaluationPage: React.FC = () => {
     toggleHideLLMScores,
     calculateAlignmentScores,
     setCurrentPrompt,
+    addPromptToHistory,
   } = useAppContext();
   const [isAnalysisRunning, setIsAnalysisRunning] = useState(false);
   const [analysisSuccess, setAnalysisSuccess] = useState(false);
@@ -152,6 +153,41 @@ const EvaluationPage: React.FC = () => {
       // Calculate alignment scores between human and LLM
       // Pass the updated evaluations directly to ensure we're using the latest data
       calculateAlignmentScores(updatedEvaluations);
+      
+      // Calculate overall alignment score and dimension averages for history
+      const dimensions = [
+        'attractiveness_alignment',
+        'efficiency_alignment',
+        'perspicuity_alignment',
+        'dependability_alignment',
+        'stimulation_alignment',
+        'novelty_alignment',
+      ];
+      
+      // Calculate dimension averages
+      const dimensionAverages: Record<string, number> = {};
+      dimensions.forEach((dimension) => {
+        const sum = updatedEvaluations.reduce(
+          (total, evaluation) => total + evaluation.dimension_alignments[dimension as keyof typeof evaluation.dimension_alignments],
+          0
+        );
+        dimensionAverages[dimension] = sum / updatedEvaluations.length;
+      });
+      
+      // Calculate overall alignment score
+      const overallScore = updatedEvaluations.reduce(
+        (sum, evaluation) => sum + evaluation.overall_alignment_score,
+        0
+      ) / updatedEvaluations.length;
+      
+      // Add the current prompt to history
+      addPromptToHistory({
+        id: Date.now().toString(),
+        prompt: state.currentPrompt,
+        timestamp: new Date().toISOString(),
+        overall_alignment_score: overallScore,
+        dimension_alignments: dimensionAverages as any, // Type cast for compatibility
+      });
       
       // Update UI state
       setAnalysisSuccess(true);

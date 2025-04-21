@@ -400,6 +400,7 @@ const AnalysisPage: React.FC = () => {
       setMisalignedComments(sortedComments.slice(0, 3));
       
       // Step 6: Add the new prompt to history with the correctly calculated metrics
+      // The improved addPromptToHistory function will handle deduplication
       addPromptToHistory({
         id: Date.now().toString(),
         prompt: refinedPrompt,

@@ -15,16 +15,17 @@ interface EvaluationRequest {
 interface EvaluationResponse {
   scores: DimensionScores;
   justifications: LLMJustification;
+  // For debugging - the full request details
+  debug?: {
+    systemPrompt: string;
+    userPrompt: string;
+    fullRequest: any;
+  };
 }
 
 // Function to generate a system prompt with evaluation instructions
 const generateSystemPrompt = () => {
   return `
-You are an expert in UX design evaluation.
-Analyze the user comment and score it on the following UX dimensions.
-Score each dimension on a scale from -3 (very negative) to +3 (very positive).
-Provide a brief justification for each score, referencing specific parts of the comment.
-
 UX Dimensions:
 - Attractiveness: Overall impression, likability, and visual appeal
 - Efficiency: Speed, responsiveness, and ability to complete tasks quickly
@@ -69,27 +70,35 @@ const callLLMAPI = async (
     // Example with fetch:
     const apiUrl = 'https://api.openai.com/v1/chat/completions';
     
+    // Generate the system prompt
+    const systemPrompt = generateSystemPrompt();
+    // Generate the user prompt
+    const userPrompt = `${prompt}\n\nComment: "${comment.text}"\nRating: ${comment.stars}/5 stars\nUser: ${comment.name}\nDate: ${comment.date}`;
+    
+    // Create the full request body
+    const requestBody = {
+      model: settings.model,
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt
+        },
+        {
+          role: 'user',
+          content: userPrompt
+        }
+      ],
+      temperature: settings.temperature || 0.7,
+      max_tokens: settings.maxTokens || 1000
+    };
+    
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${settings.apiKey}`
       },
-      body: JSON.stringify({
-        model: settings.model,
-        messages: [
-          {
-            role: 'system',
-            content: generateSystemPrompt()
-          },
-          {
-            role: 'user',
-            content: `${prompt}\n\nComment: "${comment.text}"\nRating: ${comment.stars}/5 stars\nUser: ${comment.name}\nDate: ${comment.date}`
-          }
-        ],
-        temperature: settings.temperature || 0.7,
-        max_tokens: settings.maxTokens || 1000
-      })
+      body: JSON.stringify(requestBody)
     });
     
     if (!response.ok) {
@@ -110,12 +119,19 @@ const callLLMAPI = async (
     // Validate response format
     validateResponse(evaluationData);
     
+    // Add debug information
+    evaluationData.debug = {
+      systemPrompt,
+      userPrompt,
+      fullRequest: requestBody
+    };
+    
     return evaluationData;
   } catch (error) {
     console.error('LLM API Error:', error);
     // Return fallback mock data if in development environment
     if (process.env.NODE_ENV === 'development') {
-      return generateFallbackResponse(comment);
+      return generateFallbackResponse(comment, prompt, settings);
     }
     throw error;
   }
@@ -155,7 +171,7 @@ const validateResponse = (response: any): void => {
 };
 
 // Generate a fallback response for development/testing
-const generateFallbackResponse = (comment: CommentInput): EvaluationResponse => {
+const generateFallbackResponse = (comment: CommentInput, prompt: string, settings: LLMSettings): EvaluationResponse => {
   // Create a mock response based on the star rating to make it somewhat realistic
   const starScoreMap: Record<number, number> = {
     1: -2,
@@ -199,7 +215,37 @@ const generateFallbackResponse = (comment: CommentInput): EvaluationResponse => 
     novelty: `The innovation and creativity of the app is rated as ${getSentiment(scores.novelty)}.`
   };
   
-  return { scores, justifications };
+  // Generate the system prompt
+  const systemPrompt = generateSystemPrompt();
+  // Generate the user prompt
+  const userPrompt = `${prompt}\n\nComment: "${comment.text}"\nRating: ${comment.stars}/5 stars\nUser: ${comment.name}\nDate: ${comment.date}`;
+  
+  // Create the full request body (for debugging)
+  const requestBody = {
+    model: settings.model,
+    messages: [
+      {
+        role: 'system',
+        content: systemPrompt
+      },
+      {
+        role: 'user',
+        content: userPrompt
+      }
+    ],
+    temperature: settings.temperature || 0.7,
+    max_tokens: settings.maxTokens || 1000
+  };
+  
+  return { 
+    scores, 
+    justifications,
+    debug: {
+      systemPrompt,
+      userPrompt,
+      fullRequest: requestBody
+    }
+  };
 };
 
 // Evaluate multiple comments with a single prompt

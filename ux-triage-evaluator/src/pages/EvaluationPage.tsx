@@ -25,6 +25,7 @@ import Layout from '../components/Layout';
 import { useAppContext } from '../contexts/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { Score, UXDimension, DimensionScores } from '../models/types';
+import { evaluateComment } from '../services/llmService';
 
 // Available score options
 const scoreOptions: Score[] = [-3, -2, -1, 0, 1, 2, 3];
@@ -87,53 +88,70 @@ const EvaluationPage: React.FC = () => {
   const currentComment = state.comments[currentCommentIndex];
   const currentEvaluation = state.evaluations[currentCommentIndex];
 
-  // In a real application, this would call an actual LLM API
-  const handleRunLLMAnalysis = () => {
+  // Call the actual LLM API to analyze comments
+  const handleRunLLMAnalysis = async () => {
     setIsAnalysisRunning(true);
     setError('');
 
-    // Simulate API call with timeout
-    setTimeout(() => {
-      try {
-        // Mock LLM analysis - in a real app, this would come from an API
-        const updatedEvaluations = state.evaluations.map((evaluation) => {
-          // Generate random scores for the mock LLM
-          const mockLLMScores: DimensionScores = {
-            attractiveness: scoreOptions[Math.floor(Math.random() * scoreOptions.length)],
-            efficiency: scoreOptions[Math.floor(Math.random() * scoreOptions.length)],
-            perspicuity: scoreOptions[Math.floor(Math.random() * scoreOptions.length)],
-            dependability: scoreOptions[Math.floor(Math.random() * scoreOptions.length)],
-            stimulation: scoreOptions[Math.floor(Math.random() * scoreOptions.length)],
-            novelty: scoreOptions[Math.floor(Math.random() * scoreOptions.length)],
-          };
-
-          // Generate mock justifications
-          const mockJustifications = {
-            attractiveness: `The comment ${mockLLMScores.attractiveness > 0 ? 'indicates positive' : mockLLMScores.attractiveness < 0 ? 'shows negative' : 'has neutral'} feelings about the app's attractiveness.`,
-            efficiency: `Based on the review, the app's efficiency appears to be ${mockLLMScores.efficiency > 0 ? 'good' : mockLLMScores.efficiency < 0 ? 'poor' : 'average'}.`,
-            perspicuity: `The user finds the app ${mockLLMScores.perspicuity > 0 ? 'easy' : mockLLMScores.perspicuity < 0 ? 'difficult' : 'moderately easy'} to understand and use.`,
-            dependability: `The app ${mockLLMScores.dependability > 0 ? 'seems reliable' : mockLLMScores.dependability < 0 ? 'shows signs of unreliability' : 'has average reliability'} based on the review.`,
-            stimulation: `The user appears ${mockLLMScores.stimulation > 0 ? 'engaged and interested' : mockLLMScores.stimulation < 0 ? 'bored or disinterested' : 'neither particularly engaged nor disinterested'} in using the app.`,
-            novelty: `The app ${mockLLMScores.novelty > 0 ? 'offers innovative features' : mockLLMScores.novelty < 0 ? 'lacks originality' : 'has some standard features'} according to this review.`,
-          };
-
+    try {
+      // Store the API responses for debugging in the Analysis page
+      // Define interface for debug response structure
+      interface DebugResponse {
+        commentData: { name: string; date: string; text: string; stars: number };
+        apiResponse: any;
+        evaluation: any;
+      }
+      
+      const debugResponses: DebugResponse[] = [];
+      
+      // Use the LLM service to evaluate each comment
+      const evaluationPromises = state.evaluations.map(async (evaluation, index) => {
+        try {
+          // Extract comment data
+          const { name, date, text, stars } = state.comments[index];
+          
+          // Call the LLM API
+          const result = await evaluateComment(
+            { name, date, text, stars },
+            state.currentPrompt,
+            state.llmSettings
+          );
+          
+          // Store the response for debugging
+          debugResponses.push({
+            commentData: { name, date, text, stars },
+            apiResponse: result,
+            evaluation
+          });
+          
+          // Return updated evaluation
           return {
             ...evaluation,
-            llm_scores: mockLLMScores,
-            llm_justification: mockJustifications,
+            llm_scores: result.scores,
+            llm_justification: result.justifications,
           };
-        });
+        } catch (error) {
+          console.error(`Error processing comment ${evaluation.name}:`, error);
+          return evaluation; // Return unchanged on error
+        }
+      });
+      
+      // Wait for all evaluations to complete
+      const updatedEvaluations = await Promise.all(evaluationPromises);
+      
+      // Store debug responses in localStorage for the Analysis page to access
+      localStorage.setItem('llmDebugResponses', JSON.stringify(debugResponses));
 
         setEvaluations(updatedEvaluations);
-        setIsAnalysisRunning(false);
+        calculateAlignmentScores(); // Calculate alignment between human and LLM scores
         setAnalysisSuccess(true);
-      } catch (err) {
-        console.error('Error in LLM analysis:', err);
-        setError('Failed to analyze comments. Please try again.');
+        setIsAnalysisRunning(false);
+      } catch (error) {
+        console.error('Error during analysis:', error);
+        setError('An error occurred during analysis. Please try again.');
         setIsAnalysisRunning(false);
       }
-    }, 2000); // Simulate 2 second API call
-  };
+    };
 
   const handleScoreChange = (dimension: UXDimension, score: Score) => {
     const updatedEvaluations = [...state.evaluations];

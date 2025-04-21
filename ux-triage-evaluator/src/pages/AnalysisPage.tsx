@@ -54,7 +54,7 @@ const AnalysisPage: React.FC = () => {
   const [refinedPrompt, setRefinedPrompt] = useState(state.currentPrompt);
   const [isAnalysisRunning, setIsAnalysisRunning] = useState(false);
   
-  // Temporary state for debugging LLM responses
+  // State for debugging LLM responses
   interface DebugResponse {
     commentData: { name: string; text: string; stars: number };
     apiResponse: any;
@@ -63,6 +63,21 @@ const AnalysisPage: React.FC = () => {
   
   const [llmResponses, setLlmResponses] = useState<DebugResponse[]>([]);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
+  
+  // Load debug data from localStorage on initial mount and when updated from EvaluationPage
+  useEffect(() => {
+    try {
+      const storedResponses = localStorage.getItem('llmDebugResponses');
+      if (storedResponses) {
+        const parsedResponses = JSON.parse(storedResponses) as DebugResponse[];
+        if (parsedResponses.length > 0) {
+          setLlmResponses(parsedResponses);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading debug data from localStorage:', error);
+    }
+  }, [state.evaluations]); // Reload whenever evaluations change
 
   // Reference for the chart canvas (for export)
   const chartRef = useRef<ChartJS<'radar', number[], unknown>>(null);
@@ -252,8 +267,10 @@ const AnalysisPage: React.FC = () => {
       // Wait for all API calls to complete
       const apiResults = await Promise.all(updatedEvaluationsPromises);
       
-      // Store API responses for debugging
-      setLlmResponses(apiResults as DebugResponse[]);
+      // Store API responses for debugging and in localStorage for persistence
+      const debugResponses = apiResults as DebugResponse[];
+      setLlmResponses(debugResponses);
+      localStorage.setItem('llmDebugResponses', JSON.stringify(debugResponses));
       
       // Transform API results into updated evaluations
       const updatedEvaluations = apiResults.map(result => {
@@ -668,14 +685,17 @@ const AnalysisPage: React.FC = () => {
         <Box sx={{ gridColumn: '1 / -1' }}>
           <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">API Response Debug (Temporary)</Typography>
-              <Button 
-                variant="outlined" 
-                color="primary"
-                onClick={() => setShowDebugInfo(!showDebugInfo)}
-              >
-                {showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
-              </Button>
+              <Typography variant="h6">LLM Input & Response Debug</Typography>
+              <Box>
+                <Button 
+                  variant="outlined" 
+                  color="primary"
+                  onClick={() => setShowDebugInfo(!showDebugInfo)}
+                  sx={{ ml: 1 }}
+                >
+                  {showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
+                </Button>
+              </Box>
             </Box>
             {showDebugInfo && (
               <Box sx={{ mt: 2, maxHeight: '400px', overflow: 'auto' }}>
@@ -685,8 +705,32 @@ const AnalysisPage: React.FC = () => {
                       <Typography variant="subtitle1" sx={{ mb: 1 }}>
                         Comment: {response.commentData.name}
                       </Typography>
-                      <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
-                        API Response:
+                      
+                      {/* LLM Input - Show what was sent to the API */}
+                      <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 'bold' }}>
+                        LLM Input (What was sent to ChatGPT):
+                      </Typography>
+                      
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>
+                          System Prompt (Instructions):
+                        </Typography>
+                        <pre style={{ background: '#e8f4f8', padding: '1rem', borderRadius: '4px', overflow: 'auto', fontSize: '0.8rem' }}>
+                          {response.apiResponse.debug?.systemPrompt || 'No system prompt found'}
+                        </pre>
+                      </Box>
+                      
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>
+                          User Prompt (Your Prompt + Comment):
+                        </Typography>
+                        <pre style={{ background: '#f0f8e8', padding: '1rem', borderRadius: '4px', overflow: 'auto', fontSize: '0.8rem' }}>
+                          {response.apiResponse.debug?.userPrompt || 'No user prompt found'}
+                        </pre>
+                      </Box>
+                      
+                      <Typography variant="subtitle2" sx={{ mt: 3, mb: 1, color: 'text.secondary' }}>
+                        API Response (What came back from ChatGPT):
                       </Typography>
                       <pre style={{ background: '#f5f5f5', padding: '1rem', borderRadius: '4px', overflow: 'auto' }}>
                         {JSON.stringify(response.apiResponse, null, 2)}

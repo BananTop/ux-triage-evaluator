@@ -1,27 +1,36 @@
 import React from 'react';
 import {
+  Box,
   Typography,
   Paper,
-  Box,
-  Grid,
+  Button,
+  Alert,
+  Chip,
   Card,
   CardContent,
   CardActions,
-  Button,
+  Divider,
+  TableContainer,
   Table,
+  TableHead,
   TableBody,
   TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  Divider,
-  Alert
+  TableRow
 } from '@mui/material';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import Layout from '../components/Layout';
 import { useAppContext } from '../contexts/AppContext';
+import { HumanScoreSnapshot } from '../models/types';
 import { useNavigate } from 'react-router-dom';
 
 // Register ChartJS components
@@ -41,28 +50,36 @@ const HistoryPage: React.FC = () => {
   const { state, setCurrentPrompt } = useAppContext();
   const navigate = useNavigate();
 
-  // Prepare chart data
-  const chartData = {
-    labels: state.promptHistory.map((_, index) => `Prompt ${state.promptHistory.length - index}`).reverse(),
-    datasets: [
-      {
-        label: 'Overall Alignment',
-        data: [...state.promptHistory].reverse().map(entry => entry.overall_alignment_score * 100),
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.5)',
-      },
-      ...(Object.keys(dimensionLabels) as Array<keyof typeof dimensionLabels>).map((dimension, index) => ({
-        label: dimensionLabels[dimension],
-        data: [...state.promptHistory].reverse().map(entry => {
-          const dimKey = dimension as keyof typeof entry.dimension_alignments;
-          return entry.dimension_alignments[dimKey] * 100;
-        }),
-        borderColor: `hsl(${index * 30}, 70%, 50%)`,
-        backgroundColor: `hsla(${index * 30}, 70%, 50%, 0.5)`,
-        hidden: true, // Hide by default to avoid cluttering the chart
-      })),
-    ],
-  };
+  // Prepare chart data - forces a recalculation whenever state changes
+  // Using useMemo to optimize but still refresh when needed
+  const chartData = React.useMemo(() => {
+    console.log('Recalculating chart data with prompt history length:', state.promptHistory.length);
+    
+    // Create reversed array once to avoid multiple reversals
+    const reversedHistory = [...state.promptHistory].reverse();
+    
+    return {
+      labels: reversedHistory.map((_, index) => `Prompt ${state.promptHistory.length - index}`),
+      datasets: [
+        {
+          label: 'Overall Alignment',
+          data: reversedHistory.map(entry => entry.overall_alignment_score * 100),
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.5)',
+        },
+        ...(Object.keys(dimensionLabels) as Array<keyof typeof dimensionLabels>).map((dimension, index) => ({
+          label: dimensionLabels[dimension],
+          data: reversedHistory.map(entry => {
+            const dimKey = dimension as keyof typeof entry.dimension_alignments;
+            return entry.dimension_alignments[dimKey] * 100;
+          }),
+          borderColor: `hsl(${index * 30}, 70%, 50%)`,
+          backgroundColor: `hsla(${index * 30}, 70%, 50%, 0.5)`,
+          hidden: false // Show dimensions by default
+        })),
+      ],
+    };
+  }, [state.promptHistory]); // Recalculate when promptHistory changes
 
   const chartOptions = {
     scales: {
@@ -95,6 +112,21 @@ const HistoryPage: React.FC = () => {
     if (score >= 0.3) return 'warning';
     return 'error';
   };
+  
+  // Function to find human score snapshot for a prompt entry
+  const getHumanScoreSnapshot = (snapshotId?: string): HumanScoreSnapshot | undefined => {
+    if (!snapshotId) return undefined;
+    return state.humanScoreHistory.find(snapshot => snapshot.id === snapshotId);
+  };
+
+  // Force refresh when navigating to this page or when state changes
+  const [, forceUpdate] = React.useReducer(x => x + 1, 0);
+  
+  React.useEffect(() => {
+    // Force a re-render when the component mounts
+    forceUpdate();
+    // And whenever prompt history or human score history changes
+  }, [state.promptHistory, state.humanScoreHistory]);
 
   const handleUsePrompt = (prompt: string) => {
     setCurrentPrompt(prompt);
@@ -139,83 +171,103 @@ const HistoryPage: React.FC = () => {
 
       {/* Prompt History Cards */}
       <Box display="grid" gap={3}>
-        {state.promptHistory.map((entry, index) => (
-          <Box key={entry.id}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                  <Box>
-                    <Typography variant="h6">
-                      Prompt {state.promptHistory.length - index}
-                    </Typography>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      {new Date(entry.timestamp).toLocaleString()}
-                    </Typography>
-                  </Box>
-                  <Chip
+        {state.promptHistory.map((entry, index) => {
+          // Find human score snapshot if available
+          const humanScoreSnapshot = getHumanScoreSnapshot(entry.humanScoreSnapshotId);
+          
+          return (
+            <Paper key={entry.id} elevation={2} sx={{ mb: 4, overflow: 'hidden' }}>
+              <Box sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6">
+                    Prompt {state.promptHistory.length - index}
+                  </Typography>
+                  <Chip 
                     label={`${Math.round(entry.overall_alignment_score * 100)}% overall alignment`}
                     color={getAlignmentColor(entry.overall_alignment_score)}
                   />
                 </Box>
-
-                <Paper 
-                  variant="outlined" 
-                  sx={{ 
-                    p: 2, 
-                    mb: 3, 
-                    backgroundColor: (theme) => theme.palette.grey[50],
-                    maxHeight: '150px',
-                    overflow: 'auto'
-                  }}
-                >
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {entry.prompt}
-                  </Typography>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                  {new Date(entry.timestamp).toLocaleString()}
+                  {humanScoreSnapshot && (
+                    <span> • Human scores saved</span>
+                  )}
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 2, mb: 3, backgroundColor: '#f9f9f9' }}>
+                  <Typography>{entry.prompt}</Typography>
                 </Paper>
-
-                <Divider sx={{ mb: 2 }} />
-
-                <Typography variant="subtitle1" gutterBottom>
+                
+                <Typography variant="subtitle1" sx={{ mb: 2 }}>
                   Dimension Alignment
                 </Typography>
-
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Dimension</TableCell>
-                        <TableCell align="right">Score</TableCell>
-                        <TableCell align="right">Alignment</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {(Object.keys(dimensionLabels) as Array<keyof typeof entry.dimension_alignments>).map((key) => (
-                        <TableRow key={key}>
-                          <TableCell>{dimensionLabels[key]}</TableCell>
-                          <TableCell align="right">
-                            {entry.dimension_alignments[key].toFixed(2)}
-                          </TableCell>
-                          <TableCell align="right">
-                            <Chip
-                              label={`${Math.round(entry.dimension_alignments[key] * 100)}%`}
-                              color={getAlignmentColor(entry.dimension_alignments[key])}
+                <Box sx={{ display: 'table', width: '100%', mb: 3 }}>
+                  <Box sx={{ display: 'table-header-group', backgroundColor: '#f5f5f5' }}>
+                    <Box sx={{ display: 'table-row' }}>
+                      <Typography sx={{ display: 'table-cell', p: 1, fontWeight: 'bold' }}>Dimension</Typography>
+                      <Typography sx={{ display: 'table-cell', p: 1, fontWeight: 'bold', textAlign: 'right' }}>LLM Score</Typography>
+                      <Typography sx={{ display: 'table-cell', p: 1, fontWeight: 'bold', textAlign: 'right' }}>Human Score</Typography>
+                      <Typography sx={{ display: 'table-cell', p: 1, fontWeight: 'bold', textAlign: 'right' }}>Alignment</Typography>
+                    </Box>
+                  </Box>
+                  <Box sx={{ display: 'table-row-group' }}>
+                    {Object.entries(dimensionLabels).map(([key, label]) => {
+                      const dimensionKey = key.replace('_alignment', '') as 'attractiveness' | 'efficiency' | 'perspicuity' | 'dependability' | 'stimulation' | 'novelty';
+                      const alignmentScore = entry.dimension_alignments[key as keyof typeof entry.dimension_alignments];
+                      
+                      // Get human score for this dimension from the snapshot if available
+                      let humanScore: number | null = null;
+                      if (humanScoreSnapshot && humanScoreSnapshot.evaluationScores.length > 0) {
+                        // Calculate average human score more efficiently
+                        let total = 0;
+                        let validScores = 0;
+                        
+                        // Loop through scores and calculate sum and count in one pass
+                        for (const scoreObj of humanScoreSnapshot.evaluationScores) {
+                          if (scoreObj.humanScores && typeof scoreObj.humanScores[dimensionKey] === 'number') {
+                            total += scoreObj.humanScores[dimensionKey];
+                            validScores++;
+                          }
+                        }
+                        
+                        // Calculate average if we have valid scores
+                        if (validScores > 0) {
+                          humanScore = total / validScores;
+                        }
+                      }
+                      
+                      return (
+                        <Box key={key} sx={{ display: 'table-row' }}>
+                          <Typography sx={{ display: 'table-cell', p: 1 }}>{label}</Typography>
+                          <Typography sx={{ display: 'table-cell', p: 1, textAlign: 'right' }}>
+                            {entry.llmScores ? entry.llmScores[dimensionKey].toFixed(1) : 'N/A'}
+                          </Typography>
+                          <Typography sx={{ display: 'table-cell', p: 1, textAlign: 'right' }}>
+                            {humanScore !== null ? humanScore.toFixed(1) : 'N/A'}
+                          </Typography>
+                          <Typography sx={{ display: 'table-cell', p: 1, textAlign: 'right' }}>
+                            <Chip 
                               size="small"
+                              label={`${Math.round(alignmentScore * 100)}%`} 
+                              color={getAlignmentColor(alignmentScore)}
                             />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </CardContent>
-              <CardActions>
-                <Button size="small" onClick={() => handleUsePrompt(entry.prompt)}>
-                  Use This Prompt
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                </Box>
+                
+                <Button 
+                  variant="contained" 
+                  size="small"
+                  onClick={() => handleUsePrompt(entry.prompt)}
+                >
+                  USE THIS PROMPT
                 </Button>
-              </CardActions>
-            </Card>
-          </Box>
-        ))}
+              </Box>
+            </Paper>
+          );
+        })}
       </Box>
 
       <Box sx={{ mt: 4 }}>

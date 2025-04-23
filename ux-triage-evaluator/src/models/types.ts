@@ -59,6 +59,15 @@ export interface PromptHistoryEntry {
   runId: string; // Unique ID for each analysis run
   overall_alignment_score: number;
   dimension_alignments: DimensionAlignment;
+  humanScoreSnapshotId?: string; // Reference to human score snapshot if available
+  llmScores?: { // Store average LLM scores for display
+    attractiveness: number;
+    efficiency: number;
+    perspicuity: number;
+    dependability: number;
+    stimulation: number;
+    novelty: number;
+  };
 }
 
 // LLM Model options
@@ -73,6 +82,16 @@ export interface LLMSettings {
   maxTokens?: number;
 }
 
+// Human score snapshot
+export interface HumanScoreSnapshot {
+  id: string;
+  timestamp: string;
+  evaluationScores: {
+    commentId: string; // Using the comment name or id as identifier
+    humanScores: DimensionScores;
+  }[];
+}
+
 // App state
 export interface AppState {
   currentPrompt: string;
@@ -82,4 +101,5 @@ export interface AppState {
   selectedCommentIndex: number;
   hideLLMScores: boolean;
   llmSettings: LLMSettings;
+  humanScoreHistory: HumanScoreSnapshot[];
 }

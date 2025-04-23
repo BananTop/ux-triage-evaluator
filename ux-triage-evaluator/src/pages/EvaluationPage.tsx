@@ -78,6 +78,7 @@ const EvaluationPage: React.FC = () => {
     calculateAlignmentScores,
     setCurrentPrompt,
     addPromptToHistory,
+    saveHumanScores,
   } = useAppContext();
   const [isAnalysisRunning, setIsAnalysisRunning] = useState(false);
   const [analysisSuccess, setAnalysisSuccess] = useState(false);
@@ -180,7 +181,35 @@ const EvaluationPage: React.FC = () => {
         0
       ) / updatedEvaluations.length;
       
-      // Add the current prompt to history
+      // Calculate average LLM scores across all evaluations
+      const averageLlmScores = {
+        attractiveness: 0,
+        efficiency: 0,
+        perspicuity: 0,
+        dependability: 0,
+        stimulation: 0,
+        novelty: 0
+      };
+      
+      // Sum up all LLM scores
+      updatedEvaluations.forEach(evaluation => {
+        averageLlmScores.attractiveness += evaluation.llm_scores.attractiveness;
+        averageLlmScores.efficiency += evaluation.llm_scores.efficiency;
+        averageLlmScores.perspicuity += evaluation.llm_scores.perspicuity;
+        averageLlmScores.dependability += evaluation.llm_scores.dependability;
+        averageLlmScores.stimulation += evaluation.llm_scores.stimulation;
+        averageLlmScores.novelty += evaluation.llm_scores.novelty;
+      });
+      
+      // Calculate averages
+      const count = updatedEvaluations.length;
+      Object.keys(averageLlmScores).forEach(key => {
+        averageLlmScores[key as keyof typeof averageLlmScores] /= count;
+      });
+
+      console.log('Average LLM scores:', averageLlmScores);
+      
+      // Add the current prompt to history with LLM scores
       addPromptToHistory({
         id: Date.now().toString(),
         prompt: state.currentPrompt,
@@ -188,6 +217,7 @@ const EvaluationPage: React.FC = () => {
         runId: `run-${Date.now()}`, // Add unique run ID
         overall_alignment_score: overallScore,
         dimension_alignments: dimensionAverages as any, // Type cast for compatibility
+        llmScores: averageLlmScores, // Store the LLM scores
       });
       
       // Update UI state
@@ -226,6 +256,22 @@ const EvaluationPage: React.FC = () => {
     // Calculate alignment scores before proceeding
     calculateAlignmentScores();
     navigate('/analysis');
+  };
+  
+  const handleSaveHumanScores = () => {
+    // Save the current human scores
+    const snapshotId = saveHumanScores();
+    
+    // Optionally add the latest prompt to history with reference to human scores
+    if (state.promptHistory.length > 0) {
+      const latestPrompt = state.promptHistory[0];
+      // Update the latest prompt entry with the human score snapshot ID
+      addPromptToHistory({
+        ...latestPrompt,
+        humanScoreSnapshotId: snapshotId, // Link to the human score snapshot
+        runId: `${latestPrompt.runId}-human-saved`, // Indicate human scores were saved
+      });
+    }
   };
 
   const getScoreColor = (score: Score) => {
@@ -472,13 +518,25 @@ const EvaluationPage: React.FC = () => {
         <Button variant="outlined" onClick={() => navigate('/comments')}>
           Back to Comments
         </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleProceedToAnalysis}
-        >
-          Next: View Analysis
-        </Button>
+        
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={handleSaveHumanScores}
+            title="Save current human scores for all comments to history"
+          >
+            Save Human Scores
+          </Button>
+          
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleProceedToAnalysis}
+          >
+            Next: View Analysis
+          </Button>
+        </Box>
       </Box>
     </Layout>
   );

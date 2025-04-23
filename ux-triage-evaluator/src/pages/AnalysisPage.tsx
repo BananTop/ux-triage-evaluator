@@ -143,12 +143,41 @@ const AnalysisPage: React.FC = () => {
 
     // Save this analysis to prompt history
     if (state.currentPrompt && state.evaluations.length > 0) {
+      // Calculate average LLM scores for initial view
+      const averageLlmScores = {
+        attractiveness: 0,
+        efficiency: 0,
+        perspicuity: 0,
+        dependability: 0,
+        stimulation: 0,
+        novelty: 0
+      };
+      
+      // Sum up all LLM scores
+      state.evaluations.forEach(evaluation => {
+        averageLlmScores.attractiveness += evaluation.llm_scores.attractiveness;
+        averageLlmScores.efficiency += evaluation.llm_scores.efficiency;
+        averageLlmScores.perspicuity += evaluation.llm_scores.perspicuity;
+        averageLlmScores.dependability += evaluation.llm_scores.dependability;
+        averageLlmScores.stimulation += evaluation.llm_scores.stimulation;
+        averageLlmScores.novelty += evaluation.llm_scores.novelty;
+      });
+      
+      // Calculate averages
+      const count = state.evaluations.length;
+      Object.keys(averageLlmScores).forEach(key => {
+        averageLlmScores[key as keyof typeof averageLlmScores] /= count;
+      });
+
+      console.log('Initial analysis - average LLM scores:', averageLlmScores);
+      
       addPromptToHistory({
         id: Date.now().toString(),
         prompt: state.currentPrompt,
         timestamp: new Date().toISOString(),
         runId: `initial-${Date.now()}`, // Add unique run ID for initial analysis
         overall_alignment_score: calculatedOverallAlignmentScore,
+        llmScores: averageLlmScores, // Store the LLM scores
         dimension_alignments: {
           attractiveness_alignment: dimensionSums.attractiveness_alignment,
           efficiency_alignment: dimensionSums.efficiency_alignment,
@@ -400,8 +429,36 @@ const AnalysisPage: React.FC = () => {
       );
       setMisalignedComments(sortedComments.slice(0, 3));
       
-      // Step 6: Add the new prompt to history with the correctly calculated metrics
-      // Each run creates a new history entry - no deduplication
+      // Step 6: Calculate average LLM scores across all evaluations
+      const averageLlmScores = {
+        attractiveness: 0,
+        efficiency: 0,
+        perspicuity: 0,
+        dependability: 0,
+        stimulation: 0,
+        novelty: 0
+      };
+      
+      // Sum up all LLM scores from the updated evaluations
+      updatedEvaluations.forEach(evaluation => {
+        averageLlmScores.attractiveness += evaluation.llm_scores.attractiveness;
+        averageLlmScores.efficiency += evaluation.llm_scores.efficiency;
+        averageLlmScores.perspicuity += evaluation.llm_scores.perspicuity;
+        averageLlmScores.dependability += evaluation.llm_scores.dependability;
+        averageLlmScores.stimulation += evaluation.llm_scores.stimulation;
+        averageLlmScores.novelty += evaluation.llm_scores.novelty;
+      });
+      
+      // Calculate averages
+      const count = updatedEvaluations.length;
+      Object.keys(averageLlmScores).forEach(key => {
+        averageLlmScores[key as keyof typeof averageLlmScores] /= count;
+      });
+
+      console.log('Refined prompt - average LLM scores:', averageLlmScores);
+      
+      // Add the new prompt to history with the correctly calculated metrics
+      // Each run creates a new history entry with LLM scores
       addPromptToHistory({
         id: Date.now().toString(),
         prompt: refinedPrompt,
@@ -409,6 +466,7 @@ const AnalysisPage: React.FC = () => {
         runId: `refined-${Date.now()}`, // Add unique run ID for refinements
         overall_alignment_score: newOverallScore,
         dimension_alignments: newDimensionAverages as any, // type cast for compatibility
+        llmScores: averageLlmScores, // Store the average LLM scores
       });
       
       // Step 7: Hide the prompt editor and reset loading state

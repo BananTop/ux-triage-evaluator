@@ -5,7 +5,8 @@ import {
   CommentEvaluation, 
   PromptHistoryEntry,
   LLMSettings,
-  LLMModel 
+  LLMModel,
+  HumanScoreSnapshot
 } from '../models/types';
 
 // Default app state
@@ -21,7 +22,8 @@ const initialState: AppState = {
     model: 'gpt-3.5-turbo',
     temperature: 0.7,
     maxTokens: 1000
-  }
+  },
+  humanScoreHistory: [] // Initialize empty human score history
 };
 
 // Create context
@@ -35,6 +37,7 @@ const AppContext = createContext<{
   toggleHideLLMScores: () => void;
   calculateAlignmentScores: (evaluationsToUse?: CommentEvaluation[]) => void;
   updateLLMSettings: (settings: Partial<LLMSettings>) => void;
+  saveHumanScores: () => string; // Save current human scores and return the snapshot ID
 }>({
   state: initialState,
   setCurrentPrompt: () => {},
@@ -45,6 +48,7 @@ const AppContext = createContext<{
   toggleHideLLMScores: () => {},
   calculateAlignmentScores: () => {},
   updateLLMSettings: () => {},
+  saveHumanScores: () => '',
 });
 
 // Provider component
@@ -59,24 +63,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
   }, []);
 
-  // Add prompt to history - always add as a new entry to track each run separately
+  // Add prompt to history with controlled duplication
   const addPromptToHistory = React.useCallback((entry: PromptHistoryEntry) => {
-    // Ensure each entry has unique ID and timestamp
-    const historyEntry = {
-      ...entry,
-      id: Date.now().toString(), // Ensure unique ID
-      timestamp: new Date().toISOString(), // Current timestamp
-      // Include run number in the entry
-      runId: Date.now().toString(),
-    };
-    
-    // Always add as a new entry at the beginning of history
-    setState((prevState) => ({
-      ...prevState,
-      promptHistory: [historyEntry, ...prevState.promptHistory],
-    }));
-    
-    console.log('Added new prompt history entry:', historyEntry);
+    setState((prevState) => {
+      // Get current timestamp
+      const now = new Date();
+      const entryTime = entry.timestamp ? new Date(entry.timestamp) : now;
+      
+      // Look for very recent entries with the same prompt text (within 5 seconds)
+      // This prevents accidental duplicates from multiple component updates
+      const recentDuplicates = prevState.promptHistory.filter(histEntry => {
+        // Check if prompt texts match
+        const promptsMatch = histEntry.prompt.trim() === entry.prompt.trim();
+        if (!promptsMatch) return false;
+        
+        // Check if timestamps are within 5 seconds
+        const entryDate = new Date(histEntry.timestamp);
+        const timeDiffMs = Math.abs(entryDate.getTime() - entryTime.getTime());
+        return timeDiffMs < 5000; // 5 seconds threshold
+      });
+      
+      // If we have a very recent duplicate and this is not explicitly a human score update
+      // (indicated by humanScoreSnapshotId being present), don't add a new entry
+      if (recentDuplicates.length > 0 && !entry.humanScoreSnapshotId) {
+        console.log('Preventing duplicate prompt entry (created within 5 seconds)');
+        return prevState;
+      }
+      
+      // If this entry has a humanScoreSnapshotId, it's updating an existing prompt with human scores
+      if (entry.humanScoreSnapshotId) {
+        // Find the existing entry to update
+        const indexToUpdate = prevState.promptHistory.findIndex(e => e.id === entry.id);
+        
+        if (indexToUpdate !== -1) {
+          console.log('Updating existing history entry with human scores');
+          const updatedHistory = [...prevState.promptHistory];
+          updatedHistory[indexToUpdate] = {
+            ...updatedHistory[indexToUpdate],
+            humanScoreSnapshotId: entry.humanScoreSnapshotId,
+            runId: entry.runId || updatedHistory[indexToUpdate].runId
+          };
+          return {
+            ...prevState,
+            promptHistory: updatedHistory
+          };
+        }
+      }
+      
+      // Create a new history entry
+      const historyEntry = {
+        ...entry,
+        id: entry.id || Date.now().toString(),
+        timestamp: entry.timestamp || now.toISOString(),
+        runId: entry.runId || `run-${Date.now()}`
+      };
+      
+      console.log('Adding new prompt history entry:', historyEntry);
+      return {
+        ...prevState,
+        promptHistory: [historyEntry, ...prevState.promptHistory]
+      };
+    });
   }, []);
 
   // Update comments
@@ -251,6 +298,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Save human scores function - creates a snapshot of current human scores
+  const saveHumanScores = React.useCallback(() => {
+    const snapshotId = `human-scores-${Date.now()}`;
+    const timestamp = new Date().toISOString();
+    
+    // Create snapshot of current human scores - ensure we capture the exact scores
+    // Add detailed debug logging to trace the values
+    console.log('Creating human score snapshot with exact scores:');
+    state.evaluations.forEach(evaluation => {
+      console.log(`Comment ${evaluation.name} scores:`, {...evaluation.human_scores});
+    });
+    
+    // Create a deeper, more careful copy to ensure no reference issues
+    const snapshot: HumanScoreSnapshot = {
+      id: snapshotId,
+      timestamp,
+      evaluationScores: state.evaluations.map(evaluation => {
+        // Explicitly copy each score to ensure correct values
+        const humanScores = {
+          attractiveness: evaluation.human_scores.attractiveness,
+          efficiency: evaluation.human_scores.efficiency,
+          perspicuity: evaluation.human_scores.perspicuity,
+          dependability: evaluation.human_scores.dependability,
+          stimulation: evaluation.human_scores.stimulation,
+          novelty: evaluation.human_scores.novelty
+        };
+        return {
+          commentId: evaluation.name,
+          humanScores
+        };
+      })
+    };
+    
+    // Add snapshot to history
+    setState((prevState) => ({
+      ...prevState,
+      humanScoreHistory: [snapshot, ...prevState.humanScoreHistory]
+    }));
+    
+    // If we have at least one prompt in history, link this human score snapshot to it
+    if (state.promptHistory.length > 0) {
+      // Get most recent prompt entry
+      const latestPrompt = state.promptHistory[0];
+      
+      // Create a modified entry with the human score snapshot reference
+      const updatedEntry: PromptHistoryEntry = {
+        ...latestPrompt,
+        humanScoreSnapshotId: snapshotId,
+        runId: `${latestPrompt.runId}-human-updated`,
+      };
+      
+      // Update this entry in history with a separate state update to ensure re-render
+      // Use functional update to avoid stale state
+      setState((prevState) => {
+        // Create a completely new array to ensure React detects the change
+        const updatedHistory = [updatedEntry, ...prevState.promptHistory.slice(1)];
+        console.log('Updating prompt history with human score snapshot:', snapshotId);
+        return {
+          ...prevState,
+          promptHistory: updatedHistory
+        };
+      });
+    }
+    
+    console.log('Saved human scores snapshot:', snapshot);
+    return snapshotId;
+  }, [state.evaluations, state.promptHistory]);
+  
   return (
     <AppContext.Provider
       value={{
@@ -263,6 +378,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleHideLLMScores,
         calculateAlignmentScores,
         updateLLMSettings,
+        saveHumanScores,
       }}
     >
       {children}
